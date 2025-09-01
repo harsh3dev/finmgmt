@@ -100,15 +100,16 @@ export function AddWidgetModal({
     
     // Determine which schema to use based on whether we have an API endpoint
     const hasApiEndpoint = widgetData.apiEndpointId && 
-                          widgetData.apiEndpointId !== 'new' && 
-                          widgetData.apiEndpointId !== '';
+                          widgetData.apiEndpointId !== 'new';
     
     let validation;
     if (hasApiEndpoint) {
       validation = validateFormData(createWidgetSchema, widgetData);
-    } else {
-      // Use the more lenient schema for widgets without API endpoints
+    } else if (widgetData.apiEndpointId === 'new') {
       validation = validateFormData(createWidgetWithoutApiSchema, widgetData);
+    } else {
+      setWidgetErrors({ apiEndpointId: 'Please select an API endpoint or create a new one' });
+      return;
     }
     
     if (!validation.success) {
@@ -119,14 +120,6 @@ export function AddWidgetModal({
     // If using existing API, submit directly
     if (hasApiEndpoint) {
       onSubmit(validation.data as CreateWidgetInput);
-      handleClose();
-    } else if (!widgetData.apiEndpointId || widgetData.apiEndpointId === '') {
-      // Submit widget without API endpoint (for demo/static widgets)
-      const widgetWithoutApi = {
-        ...validation.data,
-        apiEndpointId: 'demo' // Use a default demo endpoint ID
-      } as CreateWidgetInput;
-      onSubmit(widgetWithoutApi);
       handleClose();
     } else if (widgetData.apiEndpointId === 'new') {
       // Need to create new API endpoint
@@ -347,33 +340,41 @@ export function AddWidgetModal({
                     }}
                   >
                     <SelectTrigger className={widgetErrors.apiEndpointId ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Select an API endpoint or create a demo widget" />
+                      <SelectValue placeholder={apiEndpoints.length === 0 ? "Create a new API endpoint" : "Select an API endpoint"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">
-                        <div className="flex flex-col">
-                          <span className="font-medium">No API (Demo Widget)</span>
-                          <span className="text-sm text-muted-foreground">
-                            Create a widget with sample data for testing
-                          </span>
-                        </div>
-                      </SelectItem>
-                      {apiEndpoints.map((endpoint) => (
-                        <SelectItem key={endpoint.id} value={endpoint.id}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{endpoint.name}</span>
-                            <span className="text-sm text-muted-foreground">
-                              {endpoint.category} • {endpoint.url}
-                            </span>
+                      {apiEndpoints.length === 0 ? (
+                        <SelectItem value="new">
+                          <div className="flex items-center gap-2">
+                            <Plus className="h-4 w-4" />
+                            <div className="flex flex-col">
+                              <span className="font-medium">Create New API Endpoint</span>
+                              <span className="text-sm text-muted-foreground">
+                                No API endpoints found - create your first one
+                              </span>
+                            </div>
                           </div>
                         </SelectItem>
-                      ))}
-                      <SelectItem value="new">
-                        <div className="flex items-center gap-2">
-                          <Plus className="h-4 w-4" />
-                          <span>Add New API Endpoint</span>
-                        </div>
-                      </SelectItem>
+                      ) : (
+                        <>
+                          {apiEndpoints.map((endpoint) => (
+                            <SelectItem key={endpoint.id} value={endpoint.id}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{endpoint.name}</span>
+                                <span className="text-sm text-muted-foreground">
+                                  {endpoint.category} • {endpoint.url}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="new">
+                            <div className="flex items-center gap-2">
+                              <Plus className="h-4 w-4" />
+                              <span>Add New API Endpoint</span>
+                            </div>
+                          </SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                   {widgetErrors.apiEndpointId && (
@@ -468,13 +469,11 @@ export function AddWidgetModal({
                 </Button>
                 <Button 
                   type="submit"
-                  disabled={!widgetData.name}
+                  disabled={!widgetData.name || !widgetData.apiEndpointId}
                 >
                   {widgetData.apiEndpointId === 'new' 
                     ? 'Next: Configure API' 
-                    : widgetData.apiEndpointId === '' 
-                      ? 'Create Demo Widget' 
-                      : 'Add Widget'}
+                    : 'Add Widget'}
                 </Button>
               </DialogFooter>
             </form>
