@@ -21,11 +21,15 @@ export const createApiEndpointSchema = z.object({
   
   headers: z.record(z.string(), z.string()).optional(),
   
-  apiKey: z.string().optional(),
+  apiKey: z.string()
+    .max(1000, 'API key must be less than 1000 characters')
+    .optional()
+    .or(z.literal('')),
   
   description: z.string()
     .max(500, 'Description must be less than 500 characters')
-    .optional(),
+    .optional()
+    .or(z.literal('')),
   
   curlCommand: z.string().optional(),
 });

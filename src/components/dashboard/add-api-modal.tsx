@@ -46,13 +46,24 @@ export function AddApiModal({
     url: "",
     category: "stocks",
     description: "",
+    apiKey: "",
   });
 
   const [curlCommand, setCurlCommand] = useState("");
+  const [inputMethod, setInputMethod] = useState<'form' | 'curl'>('form');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTestingApi, setIsTestingApi] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [apiTestResult, setApiTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Clear specific field errors when the field is changed
+  const clearFieldError = (fieldName: string) => {
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[fieldName];
+      return newErrors;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,8 +73,8 @@ export function AddApiModal({
     // Clear previous errors
     setErrors({});
 
-    // If cURL command is provided, parse it and merge with form data
-    if (curlCommand.trim()) {
+    // If cURL command is being used and provided, parse it and merge with form data
+    if (inputMethod === 'curl' && curlCommand.trim()) {
       try {
         const parsed = apiService.parseCurlCommand(curlCommand);
         if (!parsed.url) {
@@ -83,6 +94,14 @@ export function AddApiModal({
       }
     }
 
+    // Add API key to headers if provided
+    if (dataToValidate.apiKey) {
+      dataToValidate.headers = {
+        ...dataToValidate.headers,
+        'Authorization': `Bearer ${dataToValidate.apiKey}`
+      };
+    }
+
     const validation = validateFormData(createApiEndpointSchema, dataToValidate);
     
     if (!validation.success) {
@@ -100,8 +119,8 @@ export function AddApiModal({
     // Clear previous test results
     setApiTestResult(null);
 
-    // If cURL command is provided, parse it
-    if (curlCommand.trim()) {
+    // If cURL command is being used and provided, parse it
+    if (inputMethod === 'curl' && curlCommand.trim()) {
       try {
         const parsed = apiService.parseCurlCommand(curlCommand);
         if (!parsed.url) {
@@ -125,6 +144,14 @@ export function AddApiModal({
     if (!dataToTest.url) {
       setApiTestResult({ success: false, message: 'URL is required' });
       return;
+    }
+
+    // Add API key to headers if provided
+    if (dataToTest.apiKey) {
+      dataToTest.headers = {
+        ...dataToTest.headers,
+        'Authorization': `Bearer ${dataToTest.apiKey}`
+      };
     }
 
     setIsTestingApi(true);
@@ -201,8 +228,10 @@ export function AddApiModal({
       url: "",
       category: "stocks",
       description: "",
+      apiKey: "",
     });
     setCurlCommand("");
+    setInputMethod('form');
     setErrors({});
     setApiTestResult(null);
     onClose();
@@ -220,172 +249,346 @@ export function AddApiModal({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 py-4">
-            {/* cURL Command Section */}
+            {/* Input Method Selection */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  cURL Command (Optional)
-                </CardTitle>
+                <CardTitle className="text-base">Configuration Method</CardTitle>
                 <CardDescription>
-                  Paste a cURL command to automatically populate the form
+                  Choose how you want to add your API endpoint
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Textarea
-                  placeholder="curl -X GET 'https://api.example.com/data' -H 'Authorization: Bearer token'"
-                  value={curlCommand}
-                  onChange={(e) => setCurlCommand(e.target.value)}
-                  className={errors.curlCommand ? "border-destructive" : ""}
-                  rows={3}
-                />
-                {errors.curlCommand && (
-                  <p className="text-sm text-destructive">{errors.curlCommand}</p>
-                )}
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={parseCurlToForm}
-                  disabled={!curlCommand.trim() || isParsing}
-                >
-                  {isParsing ? 'Parsing...' : 'Parse cURL to Form'}
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={inputMethod === 'form' ? 'default' : 'outline'}
+                    onClick={() => setInputMethod('form')}
+                    className="justify-start"
+                  >
+                    Manual Configuration
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={inputMethod === 'curl' ? 'default' : 'outline'}
+                    onClick={() => setInputMethod('curl')}
+                    className="justify-start"
+                  >
+                    cURL Command
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Manual Form Section */}
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">API Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., Alpha Vantage Stocks, Yahoo Finance"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className={errors.name ? "border-destructive" : ""}
-                />
-                {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name}</p>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="url">API URL</Label>
-                <Input
-                  id="url"
-                  placeholder="https://api.example.com/data"
-                  value={formData.url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
-                  className={errors.url ? "border-destructive" : ""}
-                />
-                {errors.url && (
-                  <p className="text-sm text-destructive">{errors.url}</p>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value: "stocks" | "crypto" | "forex" | "commodities" | "bonds" | "indices" | "economic" | "custom") => 
-                    setFormData(prev => ({ ...prev, category: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {API_CATEGORIES.map((category) => (
-                      <SelectItem key={category.value} value={category.value}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{category.label}</span>
-                          {category.description && (
-                            <span className="text-sm text-muted-foreground">
-                              {category.description}
-                            </span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description (Optional)</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Brief description of this API endpoint"
-                  value={formData.description || ""}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className={errors.description ? "border-destructive" : ""}
-                  rows={2}
-                />
-                {errors.description && (
-                  <p className="text-sm text-destructive">{errors.description}</p>
-                )}
-              </div>
-
-              {/* Test API Section */}
+            {/* cURL Command Section */}
+            {inputMethod === 'curl' && (
               <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Test API Connection</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleTestApi}
-                      disabled={isTestingApi || (!formData.url && !curlCommand)}
-                    >
-                      {isTestingApi ? 'Testing...' : 'Test API'}
-                    </Button>
-                  </div>
-                  {apiTestResult && (
-                    <div className={`mt-3 p-3 rounded-md ${
-                      apiTestResult.success 
-                        ? 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800' 
-                        : 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
-                    }`}>
-                      <p className="text-sm">{apiTestResult.message}</p>
-                    </div>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    cURL Command
+                  </CardTitle>
+                  <CardDescription>
+                    Paste a cURL command to automatically populate the form
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Textarea
+                    placeholder="curl -X GET 'https://api.example.com/data' -H 'Authorization: Bearer token'"
+                    value={curlCommand}
+                    onChange={(e) => {
+                      setCurlCommand(e.target.value);
+                      clearFieldError('curlCommand');
+                    }}
+                    className={errors.curlCommand ? "border-destructive" : ""}
+                    rows={3}
+                  />
+                  {errors.curlCommand && (
+                    <p className="text-sm text-destructive">{errors.curlCommand}</p>
                   )}
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={parseCurlToForm}
+                    disabled={!curlCommand.trim() || isParsing}
+                  >
+                    {isParsing ? 'Parsing...' : 'Parse cURL to Form'}
+                  </Button>
                 </CardContent>
               </Card>
+            )}
 
-              {/* Global Validation Errors */}
-              {Object.keys(errors).length > 0 && (
-                <Card className="border-destructive">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-medium text-destructive">Please fix the following errors:</h4>
-                        <ul className="text-sm text-destructive space-y-1">
-                          {Object.entries(errors).map(([field, message]) => (
-                            <li key={field} className="flex items-start gap-1">
-                              <span className="font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}:</span>
-                              <span>{message}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+            {/* Manual Form Section */}
+            {inputMethod === 'form' && (
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">API Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g., Alpha Vantage Stocks, Yahoo Finance"
+                    value={formData.name}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, name: e.target.value }));
+                      clearFieldError('name');
+                    }}
+                    className={errors.name ? "border-destructive" : ""}
+                  />
+                  {errors.name && (
+                    <p className="text-sm text-destructive">{errors.name}</p>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="url">API URL</Label>
+                  <Input
+                    id="url"
+                    placeholder="https://api.example.com/data"
+                    value={formData.url}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, url: e.target.value }));
+                      clearFieldError('url');
+                    }}
+                    className={errors.url ? "border-destructive" : ""}
+                  />
+                  {errors.url && (
+                    <p className="text-sm text-destructive">{errors.url}</p>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="apiKey">API Key (Optional)</Label>
+                  <Input
+                    id="apiKey"
+                    type="password"
+                    placeholder="Enter your API key if required"
+                    value={formData.apiKey || ""}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, apiKey: e.target.value }));
+                      clearFieldError('apiKey');
+                    }}
+                    className={errors.apiKey ? "border-destructive" : ""}
+                  />
+                  {errors.apiKey && (
+                    <p className="text-sm text-destructive">{errors.apiKey}</p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Will be added as Authorization: Bearer header
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value: "stocks" | "crypto" | "forex" | "commodities" | "bonds" | "indices" | "economic" | "custom") => {
+                      setFormData(prev => ({ ...prev, category: value }));
+                      clearFieldError('category');
+                    }}
+                  >
+                    <SelectTrigger className={errors.category ? "border-destructive" : ""}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {API_CATEGORIES.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{category.label}</span>
+                            {category.description && (
+                              <span className="text-sm text-muted-foreground">
+                                {category.description}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.category && (
+                    <p className="text-sm text-destructive">{errors.category}</p>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Brief description of this API endpoint"
+                    value={formData.description || ""}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, description: e.target.value }));
+                      clearFieldError('description');
+                    }}
+                    className={errors.description ? "border-destructive" : ""}
+                    rows={2}
+                  />
+                  {errors.description && (
+                    <p className="text-sm text-destructive">{errors.description}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Common fields that show regardless of method */}
+            {inputMethod === 'curl' && Object.keys(formData).some(key => formData[key as keyof CreateApiEndpointInput] && key !== 'category') && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Parsed Configuration</CardTitle>
+                  <CardDescription>
+                    Review the parsed details from your cURL command
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="parsedName">API Name</Label>
+                      <Input
+                        id="parsedName"
+                        placeholder="e.g., Alpha Vantage Stocks, Yahoo Finance"
+                        value={formData.name}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, name: e.target.value }));
+                          clearFieldError('name');
+                        }}
+                        className={errors.name ? "border-destructive" : ""}
+                      />
+                      {errors.name && (
+                        <p className="text-sm text-destructive">{errors.name}</p>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="parsedUrl">API URL</Label>
+                      <Input
+                        id="parsedUrl"
+                        value={formData.url}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, url: e.target.value }));
+                          clearFieldError('url');
+                        }}
+                        className={errors.url ? "border-destructive" : ""}
+                      />
+                      {errors.url && (
+                        <p className="text-sm text-destructive">{errors.url}</p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="parsedCategory">Category</Label>
+                      <Select
+                        value={formData.category}
+                        onValueChange={(value: "stocks" | "crypto" | "forex" | "commodities" | "bonds" | "indices" | "economic" | "custom") => {
+                          setFormData(prev => ({ ...prev, category: value }));
+                          clearFieldError('category');
+                        }}
+                      >
+                        <SelectTrigger className={errors.category ? "border-destructive" : ""}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {API_CATEGORIES.map((category) => (
+                            <SelectItem key={category.value} value={category.value}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{category.label}</span>
+                                {category.description && (
+                                  <span className="text-sm text-muted-foreground">
+                                    {category.description}
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.category && (
+                        <p className="text-sm text-destructive">{errors.category}</p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="parsedDescription">Description (Optional)</Label>
+                      <Textarea
+                        id="parsedDescription"
+                        placeholder="Brief description of this API endpoint"
+                        value={formData.description || ""}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, description: e.target.value }));
+                          clearFieldError('description');
+                        }}
+                        className={errors.description ? "border-destructive" : ""}
+                        rows={2}
+                      />
+                      {errors.description && (
+                        <p className="text-sm text-destructive">{errors.description}</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Test API Section */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">Test API Connection</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTestApi}
+                    disabled={isTestingApi || (!formData.url && !curlCommand)}
+                  >
+                    {isTestingApi ? 'Testing...' : 'Test API'}
+                  </Button>
+                </div>
+                {apiTestResult && (
+                  <div className={`mt-3 p-3 rounded-md ${
+                    apiTestResult.success 
+                      ? 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800' 
+                      : 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+                  }`}>
+                    <p className="text-sm">{apiTestResult.message}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Global Validation Errors */}
+            {Object.keys(errors).length > 0 && (
+              <Card className="border-destructive">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium text-destructive">Please fix the following errors:</h4>
+                      <ul className="text-sm text-destructive space-y-1">
+                        {Object.entries(errors).map(([field, message]) => (
+                          <li key={field} className="flex items-start gap-1">
+                            <span className="font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                            <span>{message}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit">Add API Endpoint</Button>
+            <Button 
+              type="submit"
+              disabled={inputMethod === 'curl' ? !curlCommand.trim() && !formData.url : !formData.name || !formData.url}
+            >
+              Add API Endpoint
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -210,7 +210,7 @@ export default function DashboardPage() {
               {activeTab === 'widgets' && (
                 <Button 
                   onClick={() => setIsAddWidgetModalOpen(true)}
-                  disabled={apiEndpoints.length === 0}
+                  disabled={false}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Widget
