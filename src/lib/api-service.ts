@@ -41,7 +41,9 @@ export class ApiService {
 
     // Handle the case where the command starts with "curl:"
     let cleanCommand = curlCommand.trim();
-    if (cleanCommand.toLowerCase().startsWith('curl:')) {
+    if (cleanCommand.toLowerCase().startsWith('curl command:')) {
+      cleanCommand = cleanCommand.substring(13).trim();
+    } else if (cleanCommand.toLowerCase().startsWith('curl:')) {
       cleanCommand = cleanCommand.substring(5).trim();
     }
 
@@ -51,15 +53,16 @@ export class ApiService {
       .replace(/\\\s*\n\s*/g, ' ')
       .trim();
 
-    // Extract method first to avoid confusion with URL
+    if (!cleanCommand) {
+      throw new Error('Invalid cURL command: command appears to be empty');
+    }
+
     const methodMatch = cleanCommand.match(/(?:^|\s)(?:-X|--request)\s+([A-Z]+)/i);
     if (methodMatch) {
       result.method = methodMatch[1].toUpperCase();
-      // Remove the method part from the command to avoid URL confusion
       cleanCommand = cleanCommand.replace(methodMatch[0], ' ').trim();
     }
 
-    // Extract URL - look for --url flag first, then quoted URLs, then unquoted URLs
     let urlMatch = cleanCommand.match(/(?:^|\s)--url\s+['"]?([^'"\s]+)['"]?/);
     if (!urlMatch) {
       // Look for quoted URLs
@@ -74,7 +77,10 @@ export class ApiService {
       result.url = urlMatch[1];
     }
 
-    // Extract headers - support both -H and --header
+    if (!result.url) {
+      throw new Error('No valid URL found in cURL command');
+    }
+
     const headerMatches = cleanCommand.matchAll(/(?:^|\s)(?:-H|--header)\s+['"]([^'"]+)['"](?:\s|$)/g);
     for (const match of headerMatches) {
       const headerValue = match[1];
@@ -88,7 +94,6 @@ export class ApiService {
       }
     }
 
-    // Extract data/body - support both -d and --data
     const dataMatch = cleanCommand.match(/(?:^|\s)(?:-d|--data)\s+['"]([^'"]*?)['"]/) ||
                      cleanCommand.match(/(?:^|\s)(?:-d|--data)\s+(\S+)/);
     if (dataMatch) {
@@ -315,5 +320,4 @@ export class ApiService {
   }
 }
 
-// Export singleton instance
 export const apiService = ApiService.getInstance();
