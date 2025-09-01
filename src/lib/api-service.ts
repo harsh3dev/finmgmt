@@ -39,40 +39,60 @@ export class ApiService {
       headers: {},
     };
 
+    // Handle the case where the command starts with "curl:"
+    let cleanCommand = curlCommand.trim();
+    if (cleanCommand.toLowerCase().startsWith('curl:')) {
+      cleanCommand = cleanCommand.substring(5).trim();
+    }
+
     // Remove 'curl' from the beginning and normalize whitespace
-    const cleanCommand = curlCommand
-      .replace(/^curl\s+/i, '')
+    cleanCommand = cleanCommand
+      .replace(/^curl\s*/i, '')
       .replace(/\\\s*\n\s*/g, ' ')
       .trim();
 
-    // Extract URL (first argument that looks like a URL or is quoted)
-    const urlMatch = cleanCommand.match(/(?:^|\s)(['"]?)([^\s'"]+?)\1(?:\s|$)/) ||
-                    cleanCommand.match(/(?:^|\s)(['"])([^'"]+)\1(?:\s|$)/);
+    // Extract method first to avoid confusion with URL
+    const methodMatch = cleanCommand.match(/(?:^|\s)(?:-X|--request)\s+([A-Z]+)/i);
+    if (methodMatch) {
+      result.method = methodMatch[1].toUpperCase();
+      // Remove the method part from the command to avoid URL confusion
+      cleanCommand = cleanCommand.replace(methodMatch[0], ' ').trim();
+    }
+
+    // Extract URL - look for --url flag first, then quoted URLs, then unquoted URLs
+    let urlMatch = cleanCommand.match(/(?:^|\s)--url\s+['"]?([^'"\s]+)['"]?/);
+    if (!urlMatch) {
+      // Look for quoted URLs
+      urlMatch = cleanCommand.match(/(?:^|\s)['"]([^'"]*https?:\/\/[^'"]+)['"]/) ||
+                 cleanCommand.match(/(?:^|\s)['"]([^'"\s]*\.[^'"\s]+[^'"\s]*)['"]/) ||
+                 // Look for unquoted URLs
+                 cleanCommand.match(/(?:^|\s)(https?:\/\/[^\s]+)/) ||
+                 cleanCommand.match(/(?:^|\s)([^\s]*\.[^\s]+[^\s]*)/);
+    }
     
     if (urlMatch) {
-      result.url = urlMatch[2];
+      result.url = urlMatch[1];
     }
 
-    // Extract method
-    const methodMatch = cleanCommand.match(/-X\s+([A-Z]+)|--request\s+([A-Z]+)/i);
-    if (methodMatch) {
-      result.method = (methodMatch[1] || methodMatch[2]).toUpperCase();
-    }
-
-    // Extract headers
-    const headerMatches = cleanCommand.matchAll(/-H\s+['"]([^'"]+)['"]|--header\s+['"]([^'"]+)['"]/g);
+    // Extract headers - support both -H and --header
+    const headerMatches = cleanCommand.matchAll(/(?:^|\s)(?:-H|--header)\s+['"]([^'"]+)['"](?:\s|$)/g);
     for (const match of headerMatches) {
-      const headerValue = match[1] || match[2];
-      const [key, ...valueParts] = headerValue.split(':');
-      if (key && valueParts.length > 0) {
-        result.headers[key.trim()] = valueParts.join(':').trim();
+      const headerValue = match[1];
+      const colonIndex = headerValue.indexOf(':');
+      if (colonIndex > 0) {
+        const key = headerValue.substring(0, colonIndex).trim();
+        const value = headerValue.substring(colonIndex + 1).trim();
+        if (key && value) {
+          result.headers[key] = value;
+        }
       }
     }
 
-    // Extract data/body
-    const dataMatch = cleanCommand.match(/-d\s+['"]([^'"]*?)['"]|--data\s+['"]([^'"]*?)['"]|-d\s+(\S+)|--data\s+(\S+)/);
+    // Extract data/body - support both -d and --data
+    const dataMatch = cleanCommand.match(/(?:^|\s)(?:-d|--data)\s+['"]([^'"]*?)['"]/) ||
+                     cleanCommand.match(/(?:^|\s)(?:-d|--data)\s+(\S+)/);
     if (dataMatch) {
-      result.data = dataMatch[1] || dataMatch[2] || dataMatch[3] || dataMatch[4];
+      result.data = dataMatch[1] || dataMatch[2];
     }
 
     return result;

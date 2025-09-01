@@ -24,6 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, ExternalLink, AlertCircle } from "lucide-react";
 import { 
   createWidgetSchema, 
+  createWidgetWithoutApiSchema,
   createApiEndpointSchema, 
   validateFormData,
   DISPLAY_TYPES,
@@ -67,6 +68,7 @@ export function AddWidgetModal({
 
   const [curlCommand, setCurlCommand] = useState("");
   const [isTestingApi, setIsTestingApi] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
   const [apiTestResult, setApiTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [widgetErrors, setWidgetErrors] = useState<Record<string, string>>({});
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
@@ -74,21 +76,42 @@ export function AddWidgetModal({
   const handleWidgetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const validation = validateFormData(createWidgetSchema, widgetData);
+    // Clear previous errors
+    setWidgetErrors({});
+    
+    // Determine which schema to use based on whether we have an API endpoint
+    const hasApiEndpoint = widgetData.apiEndpointId && 
+                          widgetData.apiEndpointId !== 'new' && 
+                          widgetData.apiEndpointId !== '';
+    
+    let validation;
+    if (hasApiEndpoint) {
+      validation = validateFormData(createWidgetSchema, widgetData);
+    } else {
+      // Use the more lenient schema for widgets without API endpoints
+      validation = validateFormData(createWidgetWithoutApiSchema, widgetData);
+    }
     
     if (!validation.success) {
       setWidgetErrors(validation.errors);
       return;
     }
 
-    setWidgetErrors({});
-
-    // If using existing API or creating new one
-    if (widgetData.apiEndpointId === 'new' || widgetData.apiEndpointId === '') {
-      setCurrentStep('api');
-    } else {
-      onSubmit(validation.data);
+    // If using existing API, submit directly
+    if (hasApiEndpoint) {
+      onSubmit(validation.data as CreateWidgetInput);
       handleClose();
+    } else if (!widgetData.apiEndpointId || widgetData.apiEndpointId === '') {
+      // Submit widget without API endpoint (for demo/static widgets)
+      const widgetWithoutApi = {
+        ...validation.data,
+        apiEndpointId: 'demo' // Use a default demo endpoint ID
+      } as CreateWidgetInput;
+      onSubmit(widgetWithoutApi);
+      handleClose();
+    } else if (widgetData.apiEndpointId === 'new') {
+      // Need to create new API endpoint
+      setCurrentStep('api');
     }
   };
 
@@ -97,17 +120,26 @@ export function AddWidgetModal({
     
     let apiDataToValidate = { ...apiData };
 
+    // Clear previous errors
+    setApiErrors({});
+
     // If cURL command is provided, parse it and update apiData
     if (curlCommand.trim()) {
       try {
         const parsed = apiService.parseCurlCommand(curlCommand);
+        if (!parsed.url) {
+          setApiErrors({ curlCommand: 'No valid URL found in cURL command' });
+          return;
+        }
         apiDataToValidate = {
           ...apiDataToValidate,
-          url: parsed.url || apiDataToValidate.url,
+          url: parsed.url,
           headers: { ...apiDataToValidate.headers, ...parsed.headers },
         };
-      } catch {
-        setApiErrors({ curlCommand: 'Invalid cURL command format' });
+      } catch (error) {
+        setApiErrors({ 
+          curlCommand: error instanceof Error ? error.message : 'Invalid cURL command format' 
+        });
         return;
       }
     }
@@ -118,8 +150,6 @@ export function AddWidgetModal({
       setApiErrors(validation.errors);
       return;
     }
-
-    setApiErrors({});
     
     // Submit both widget and API data
     onSubmit(widgetData, validation.data);
@@ -191,18 +221,51 @@ export function AddWidgetModal({
     onClose();
   };
 
-  const parseCurlToForm = () => {
+  const parseCurlToForm = async () => {
     if (!curlCommand.trim()) return;
 
+    setIsParsing(true);
+    setApiErrors(prev => ({ ...prev, curlCommand: '' }));
+
     try {
+      // Add a small delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const parsed = apiService.parseCurlCommand(curlCommand);
+      
+      if (!parsed.url) {
+        setApiErrors(prev => ({ ...prev, curlCommand: 'No valid URL found in cURL command' }));
+        return;
+      }
+      
       setApiData(prev => ({
         ...prev,
-        url: parsed.url || prev.url,
+        url: parsed.url,
         headers: { ...prev.headers, ...parsed.headers },
       }));
-    } catch {
-      setApiErrors({ curlCommand: 'Invalid cURL command format' });
+      
+      // Auto-populate name if not set
+      if (!apiData.name && parsed.url) {
+        try {
+          const urlObj = new URL(parsed.url);
+          const hostname = urlObj.hostname.replace('www.', '');
+          setApiData(prev => ({
+            ...prev,
+            name: prev.name || `API from ${hostname}`,
+          }));
+        } catch {
+          // Ignore URL parsing errors for name generation
+        }
+      }
+      
+      setApiErrors(prev => ({ ...prev, curlCommand: '' }));
+    } catch (error) {
+      setApiErrors(prev => ({ 
+        ...prev, 
+        curlCommand: error instanceof Error ? error.message : 'Invalid cURL command format' 
+      }));
+    } finally {
+      setIsParsing(false);
     }
   };
 
@@ -241,9 +304,17 @@ export function AddWidgetModal({
                     onValueChange={(value) => setWidgetData(prev => ({ ...prev, apiEndpointId: value }))}
                   >
                     <SelectTrigger className={widgetErrors.apiEndpointId ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Select an API endpoint" />
+                      <SelectValue placeholder="Select an API endpoint or create a demo widget" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="">
+                        <div className="flex flex-col">
+                          <span className="font-medium">No API (Demo Widget)</span>
+                          <span className="text-sm text-muted-foreground">
+                            Create a widget with sample data for testing
+                          </span>
+                        </div>
+                      </SelectItem>
                       {apiEndpoints.map((endpoint) => (
                         <SelectItem key={endpoint.id} value={endpoint.id}>
                           <div className="flex flex-col">
@@ -319,6 +390,28 @@ export function AddWidgetModal({
                     Minimum 30 seconds to avoid rate limiting
                   </p>
                 </div>
+
+                {/* Widget Validation Errors */}
+                {Object.keys(widgetErrors).length > 0 && (
+                  <Card className="border-destructive">
+                    <CardContent className="pt-6">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-medium text-destructive">Please fix the following errors:</h4>
+                          <ul className="text-sm text-destructive space-y-1">
+                            {Object.entries(widgetErrors).map(([field, message]) => (
+                              <li key={field} className="flex items-start gap-1">
+                                <span className="font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                                <span>{message}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
               <DialogFooter>
@@ -326,7 +419,11 @@ export function AddWidgetModal({
                   Cancel
                 </Button>
                 <Button type="submit">
-                  {widgetData.apiEndpointId === 'new' || widgetData.apiEndpointId === '' ? 'Next: Configure API' : 'Add Widget'}
+                  {widgetData.apiEndpointId === 'new' 
+                    ? 'Next: Configure API' 
+                    : widgetData.apiEndpointId === '' 
+                      ? 'Create Demo Widget' 
+                      : 'Add Widget'}
                 </Button>
               </DialogFooter>
             </form>
@@ -371,9 +468,9 @@ export function AddWidgetModal({
                       variant="outline" 
                       size="sm"
                       onClick={parseCurlToForm}
-                      disabled={!curlCommand.trim()}
+                      disabled={!curlCommand.trim() || isParsing}
                     >
-                      Parse cURL to Form
+                      {isParsing ? 'Parsing...' : 'Parse cURL to Form'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -476,6 +573,28 @@ export function AddWidgetModal({
                       )}
                     </CardContent>
                   </Card>
+
+                  {/* API Validation Errors */}
+                  {Object.keys(apiErrors).length > 0 && (
+                    <Card className="border-destructive">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-medium text-destructive">Please fix the following errors:</h4>
+                            <ul className="text-sm text-destructive space-y-1">
+                              {Object.entries(apiErrors).map(([field, message]) => (
+                                <li key={field} className="flex items-start gap-1">
+                                  <span className="font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                                  <span>{message}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               </div>
 

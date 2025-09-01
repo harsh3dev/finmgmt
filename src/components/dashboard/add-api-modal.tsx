@@ -51,6 +51,7 @@ export function AddApiModal({
   const [curlCommand, setCurlCommand] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTestingApi, setIsTestingApi] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
   const [apiTestResult, setApiTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,17 +59,26 @@ export function AddApiModal({
     
     let dataToValidate = { ...formData };
 
+    // Clear previous errors
+    setErrors({});
+
     // If cURL command is provided, parse it and merge with form data
     if (curlCommand.trim()) {
       try {
         const parsed = apiService.parseCurlCommand(curlCommand);
+        if (!parsed.url) {
+          setErrors({ curlCommand: 'No valid URL found in cURL command' });
+          return;
+        }
         dataToValidate = {
           ...dataToValidate,
-          url: parsed.url || dataToValidate.url,
+          url: parsed.url,
           headers: { ...dataToValidate.headers, ...parsed.headers },
         };
-      } catch {
-        setErrors({ curlCommand: 'Invalid cURL command format' });
+      } catch (error) {
+        setErrors({ 
+          curlCommand: error instanceof Error ? error.message : 'Invalid cURL command format' 
+        });
         return;
       }
     }
@@ -80,7 +90,6 @@ export function AddApiModal({
       return;
     }
 
-    setErrors({});
     onSubmit(validation.data);
     handleClose();
   };
@@ -88,17 +97,27 @@ export function AddApiModal({
   const handleTestApi = async () => {
     let dataToTest = { ...formData };
 
+    // Clear previous test results
+    setApiTestResult(null);
+
     // If cURL command is provided, parse it
     if (curlCommand.trim()) {
       try {
         const parsed = apiService.parseCurlCommand(curlCommand);
+        if (!parsed.url) {
+          setApiTestResult({ success: false, message: 'No valid URL found in cURL command' });
+          return;
+        }
         dataToTest = {
           ...dataToTest,
-          url: parsed.url || dataToTest.url,
+          url: parsed.url,
           headers: { ...dataToTest.headers, ...parsed.headers },
         };
-      } catch {
-        setApiTestResult({ success: false, message: 'Invalid cURL command format' });
+      } catch (error) {
+        setApiTestResult({ 
+          success: false, 
+          message: error instanceof Error ? error.message : 'Invalid cURL command format' 
+        });
         return;
       }
     }
@@ -109,7 +128,6 @@ export function AddApiModal({
     }
 
     setIsTestingApi(true);
-    setApiTestResult(null);
 
     try {
       const result = await apiService.testEndpoint(dataToTest);
@@ -129,19 +147,51 @@ export function AddApiModal({
     }
   };
 
-  const parseCurlToForm = () => {
+  const parseCurlToForm = async () => {
     if (!curlCommand.trim()) return;
 
+    setIsParsing(true);
+    setErrors(prev => ({ ...prev, curlCommand: '' }));
+
     try {
+      // Add a small delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const parsed = apiService.parseCurlCommand(curlCommand);
+      
+      if (!parsed.url) {
+        setErrors(prev => ({ ...prev, curlCommand: 'No valid URL found in cURL command' }));
+        return;
+      }
+      
       setFormData(prev => ({
         ...prev,
-        url: parsed.url || prev.url,
+        url: parsed.url,
         headers: { ...prev.headers, ...parsed.headers },
       }));
-      setErrors({});
-    } catch {
-      setErrors({ curlCommand: 'Invalid cURL command format' });
+      
+      // Auto-populate name if not set
+      if (!formData.name && parsed.url) {
+        try {
+          const urlObj = new URL(parsed.url);
+          const hostname = urlObj.hostname.replace('www.', '');
+          setFormData(prev => ({
+            ...prev,
+            name: prev.name || `API from ${hostname}`,
+          }));
+        } catch {
+          // Ignore URL parsing errors for name generation
+        }
+      }
+      
+      setErrors(prev => ({ ...prev, curlCommand: '' }));
+    } catch (error) {
+      setErrors(prev => ({ 
+        ...prev, 
+        curlCommand: error instanceof Error ? error.message : 'Invalid cURL command format' 
+      }));
+    } finally {
+      setIsParsing(false);
     }
   };
 
@@ -197,9 +247,9 @@ export function AddApiModal({
                   variant="outline" 
                   size="sm"
                   onClick={parseCurlToForm}
-                  disabled={!curlCommand.trim()}
+                  disabled={!curlCommand.trim() || isParsing}
                 >
-                  Parse cURL to Form
+                  {isParsing ? 'Parsing...' : 'Parse cURL to Form'}
                 </Button>
               </CardContent>
             </Card>
@@ -306,6 +356,28 @@ export function AddApiModal({
                   )}
                 </CardContent>
               </Card>
+
+              {/* Global Validation Errors */}
+              {Object.keys(errors).length > 0 && (
+                <Card className="border-destructive">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-destructive">Please fix the following errors:</h4>
+                        <ul className="text-sm text-destructive space-y-1">
+                          {Object.entries(errors).map(([field, message]) => (
+                            <li key={field} className="flex items-start gap-1">
+                              <span className="font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                              <span>{message}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
 

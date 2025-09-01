@@ -39,7 +39,31 @@ export const createWidgetSchema = z.object({
     .max(100, 'Widget name must be less than 100 characters'),
   
   apiEndpointId: z.string()
-    .min(1, 'API endpoint is required'),
+    .min(1, 'API endpoint is required')
+    .or(z.literal('new'))
+    .or(z.literal('')),
+  
+  displayType: z.enum(['card', 'table', 'chart'] as const),
+  
+  refreshInterval: z.number()
+    .min(30, 'Refresh interval must be at least 30 seconds')
+    .max(86400, 'Refresh interval must be less than 24 hours'),
+  
+  position: z.object({
+    x: z.number().optional(),
+    y: z.number().optional(),
+    width: z.number().min(1).optional(),
+    height: z.number().min(1).optional(),
+  }).optional(),
+});
+
+// Alternative widget schema for widgets without API endpoints (static/demo widgets)
+export const createWidgetWithoutApiSchema = z.object({
+  name: z.string()
+    .min(1, 'Widget name is required')
+    .max(100, 'Widget name must be less than 100 characters'),
+  
+  apiEndpointId: z.string().optional(),
   
   displayType: z.enum(['card', 'table', 'chart'] as const),
   
