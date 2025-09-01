@@ -3,7 +3,8 @@
 export interface Widget {
   id: string;
   name: string;
-  apiUrl: string;
+  apiUrl: string; // Legacy property for backwards compatibility
+  apiEndpointId?: string; // New property to reference API endpoints
   refreshInterval: number; // in seconds
   displayType: DisplayType;
   position: WidgetPosition;
@@ -29,7 +30,6 @@ export interface WidgetConfig {
 export interface FormatSettings {
   currency?: string;
   decimalPlaces?: number;
-  showPercentage?: boolean;
   dateFormat?: string;
   numberFormat?: 'default' | 'compact' | 'scientific';
 }

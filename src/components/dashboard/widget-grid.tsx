@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings, RefreshCw, Clock } from "lucide-react";
 import { apiService } from "@/lib/api-service";
+import { CurrencyValue } from "./currency-value";
 import type { Widget, ApiResponse, ApiEndpoint } from "@/types/widget";
 
 interface WidgetGridProps {
@@ -26,7 +27,13 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
 
     try {
       // Find the API endpoint for this widget
-      const endpoint = apiEndpoints.find(api => api.url === widget.apiUrl);
+      // First try to find by apiEndpointId (new architecture)
+      let endpoint = apiEndpoints.find(api => api.id === widget.apiEndpointId);
+      
+      if (!endpoint) {
+        // Fallback: try to find by URL for backwards compatibility
+        endpoint = apiEndpoints.find(api => api.url === widget.apiUrl);
+      }
       
       if (!endpoint) {
         throw new Error('API endpoint not found for widget');
@@ -92,8 +99,14 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
   };
 
   // Format field value based on widget config
-  const formatValue = (value: unknown, widget: Widget): string => {
-    if (value === null || value === undefined) return 'N/A';
+  const formatValue = (value: unknown, widget: Widget, apiData?: unknown): React.ReactNode => {
+    // Use CurrencyValue component for currency formatting with real conversion
+    if (widget.config.formatSettings.currency) {
+      return <CurrencyValue value={value} widget={widget} apiData={apiData} />;
+    }
+    
+    // Simple formatting for non-currency values
+    if (value === null || value === undefined || value === '') return 'N/A';
     
     const { formatSettings } = widget.config;
     
@@ -105,20 +118,28 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
         formatted = parseFloat(formatted.toFixed(formatSettings.decimalPlaces));
       }
       
-      // Apply percentage
-      if (formatSettings.showPercentage) {
-        return `${formatted}%`;
-      }
-      
-      // Apply currency
-      if (formatSettings.currency) {
-        return new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: formatSettings.currency,
-        }).format(formatted);
-      }
-      
       return formatted.toString();
+    }
+    
+    if (typeof value === 'string') {
+      // Try to parse string as number for decimal formatting
+      const numericValue = parseFloat(value);
+      if (!isNaN(numericValue) && formatSettings.decimalPlaces !== undefined) {
+        return numericValue.toFixed(formatSettings.decimalPlaces);
+      }
+      return value;
+    }
+    
+    if (typeof value === 'boolean') {
+      return value ? 'Yes' : 'No';
+    }
+    
+    // For objects or arrays, show a preview
+    if (typeof value === 'object') {
+      if (Array.isArray(value)) {
+        return `Array (${value.length} items)`;
+      }
+      return 'Object';
     }
     
     return String(value);
@@ -158,13 +179,16 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
     }
 
     // If no fields are selected, show raw data preview
-    if (widget.config.selectedFields.length === 0) {
+    if (!widget.config || !widget.config.selectedFields || widget.config.selectedFields.length === 0) {
       return (
         <div className="space-y-2">
           <p className="text-muted-foreground text-sm">Configure this widget to select fields</p>
-          <pre className="text-xs bg-muted p-2 rounded overflow-hidden">
-            {JSON.stringify(data.data, null, 2).slice(0, 200)}...
+          <pre className="text-xs bg-muted p-2 rounded overflow-hidden max-h-32">
+            {JSON.stringify(data.data, null, 2).slice(0, 500)}...
           </pre>
+          <p className="text-xs text-muted-foreground">
+            Data available: {Object.keys(data.data || {}).length} fields
+          </p>
         </div>
       );
     }
@@ -176,13 +200,14 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
           <div className="space-y-3">
             {widget.config.selectedFields.map(field => {
               const value = getNestedValue(data.data, field);
+              const formattedValue = formatValue(value, widget, data.data);
               return (
                 <div key={field} className="flex justify-between items-center">
                   <span className="font-medium text-sm">
                     {getFieldDisplayName(field, widget)}:
                   </span>
                   <span className="text-sm">
-                    {formatValue(value, widget)}
+                    {formattedValue}
                   </span>
                 </div>
               );
@@ -203,13 +228,14 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
               <tbody>
                 {widget.config.selectedFields.map(field => {
                   const value = getNestedValue(data.data, field);
+                  const formattedValue = formatValue(value, widget, data.data);
                   return (
                     <tr key={field} className="border-b">
                       <td className="p-2 font-medium">
                         {getFieldDisplayName(field, widget)}
                       </td>
                       <td className="p-2">
-                        {formatValue(value, widget)}
+                        {formattedValue}
                       </td>
                     </tr>
                   );
@@ -239,6 +265,12 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
     return path.split('.').reduce((current: unknown, key: string) => {
       if (current && typeof current === 'object' && !Array.isArray(current)) {
         return (current as Record<string, unknown>)[key];
+      } else if (Array.isArray(current) && current.length > 0) {
+        // If it's an array, try to get the field from the first item
+        const firstItem = current[0];
+        if (firstItem && typeof firstItem === 'object') {
+          return (firstItem as Record<string, unknown>)[key];
+        }
       }
       return null;
     }, obj);

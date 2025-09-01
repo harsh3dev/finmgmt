@@ -73,6 +73,12 @@ export function AddApiModal({
     // Clear previous errors
     setErrors({});
 
+    // Check if API has been tested successfully
+    if (!apiTestResult?.success) {
+      setErrors({ general: 'Please test the API connection successfully before adding the endpoint' });
+      return;
+    }
+
     // If cURL command is being used and provided, parse it and merge with form data
     if (inputMethod === 'curl' && curlCommand.trim()) {
       try {
@@ -175,10 +181,17 @@ export function AddApiModal({
   };
 
   const parseCurlToForm = async () => {
-    if (!curlCommand.trim()) return;
+    if (!curlCommand.trim()) {
+      setErrors(prev => ({ ...prev, curlCommand: 'Please enter a cURL command' }));
+      return;
+    }
 
     setIsParsing(true);
-    setErrors(prev => ({ ...prev, curlCommand: '' }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.curlCommand;
+      return newErrors;
+    });
 
     try {
       // Add a small delay to show loading state
@@ -211,7 +224,8 @@ export function AddApiModal({
         }
       }
       
-      setErrors(prev => ({ ...prev, curlCommand: '' }));
+      setApiTestResult(null);
+      
     } catch (error) {
       setErrors(prev => ({ 
         ...prev, 
@@ -567,7 +581,9 @@ export function AddApiModal({
                       <ul className="text-sm text-destructive space-y-1">
                         {Object.entries(errors).map(([field, message]) => (
                           <li key={field} className="flex items-start gap-1">
-                            <span className="font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                            {field !== 'general' && (
+                              <span className="font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                            )}
                             <span>{message}</span>
                           </li>
                         ))}
@@ -585,9 +601,12 @@ export function AddApiModal({
             </Button>
             <Button 
               type="submit"
-              disabled={inputMethod === 'curl' ? !curlCommand.trim() && !formData.url : !formData.name || !formData.url}
+              disabled={
+                (inputMethod === 'curl' ? !curlCommand.trim() && !formData.url : !formData.name || !formData.url) ||
+                !apiTestResult?.success
+              }
             >
-              Add API Endpoint
+              {!apiTestResult?.success ? 'Test API Connection First' : 'Add API Endpoint'}
             </Button>
           </DialogFooter>
         </form>

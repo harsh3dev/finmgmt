@@ -105,7 +105,7 @@ export default function DashboardPage() {
         height: 3,
         ...widgetData.position
       },
-      config: {
+      config: widgetData.config || {
         selectedFields: [],
         fieldMappings: {},
         formatSettings: {},

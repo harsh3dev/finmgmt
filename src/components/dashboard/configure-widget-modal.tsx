@@ -13,12 +13,33 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   configureWidgetSchema, 
   validateFormData,
   type ConfigureWidgetInput
 } from "@/lib/validation";
 import type { ConfigureWidgetModalProps } from "@/types/widget";
+
+// Common currency codes
+const COMMON_CURRENCIES = [
+  { code: 'USD', name: 'US Dollar' },
+  { code: 'EUR', name: 'Euro' },
+  { code: 'GBP', name: 'British Pound' },
+  { code: 'JPY', name: 'Japanese Yen' },
+  { code: 'INR', name: 'Indian Rupee' },
+  { code: 'CAD', name: 'Canadian Dollar' },
+  { code: 'AUD', name: 'Australian Dollar' },
+  { code: 'CHF', name: 'Swiss Franc' },
+  { code: 'CNY', name: 'Chinese Yuan' },
+  { code: 'SGD', name: 'Singapore Dollar' }
+];
 
 export function ConfigureWidgetModal({ 
   isOpen, 
@@ -209,18 +230,30 @@ export function ConfigureWidgetModal({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="currency">Currency</Label>
-                    <Input
-                      id="currency"
-                      placeholder="USD, EUR, INR"
+                    <Select
                       value={formData.formatSettings.currency || ""}
-                      onChange={(e) => setFormData((prev: ConfigureWidgetInput) => ({
+                      onValueChange={(value) => setFormData((prev: ConfigureWidgetInput) => ({
                         ...prev,
                         formatSettings: {
                           ...prev.formatSettings,
-                          currency: e.target.value
+                          currency: value
                         }
                       }))}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COMMON_CURRENCIES.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.code} - {currency.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Format numeric values as currency (applies to numbers and numeric strings)
+                    </p>
                   </div>
                   
                   <div className="grid gap-2">
@@ -230,33 +263,20 @@ export function ConfigureWidgetModal({
                       type="number"
                       min="0"
                       max="8"
-                      value={formData.formatSettings.decimalPlaces || ""}
+                      placeholder="2"
+                      value={formData.formatSettings.decimalPlaces ?? ""}
                       onChange={(e) => setFormData((prev: ConfigureWidgetInput) => ({
                         ...prev,
                         formatSettings: {
                           ...prev.formatSettings,
-                          decimalPlaces: parseInt(e.target.value) || 2
+                          decimalPlaces: e.target.value ? parseInt(e.target.value) : undefined
                         }
                       }))}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Number of decimal places to show (default: 2 for currency)
+                    </p>
                   </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="showPercentage"
-                    checked={formData.formatSettings.showPercentage || false}
-                    onChange={(e) => setFormData((prev: ConfigureWidgetInput) => ({
-                      ...prev,
-                      formatSettings: {
-                        ...prev.formatSettings,
-                        showPercentage: e.target.checked
-                      }
-                    }))}
-                    className="rounded border"
-                  />
-                  <Label htmlFor="showPercentage">Show values as percentage</Label>
                 </div>
               </CardContent>
             </Card>

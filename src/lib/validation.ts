@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { ApiCategory, DisplayType } from '@/types/widget';
 
 // API Endpoint validation schema
 export const createApiEndpointSchema = z.object({
@@ -59,9 +58,26 @@ export const createWidgetSchema = z.object({
     width: z.number().min(1).optional(),
     height: z.number().min(1).optional(),
   }).optional(),
+
+  config: z.object({
+    selectedFields: z.array(z.string()),
+    fieldMappings: z.record(z.string(), z.string()),
+    formatSettings: z.object({
+      currency: z.string().optional(),
+      decimalPlaces: z.number().min(0).max(10).optional(),
+      dateFormat: z.string().optional(),
+      numberFormat: z.enum(['default', 'compact', 'scientific']).optional(),
+    }),
+    styling: z.object({
+      backgroundColor: z.string().optional(),
+      textColor: z.string().optional(),
+      borderColor: z.string().optional(),
+      borderRadius: z.number().min(0).max(50).optional(),
+      shadow: z.boolean().optional(),
+    }),
+  }).optional(),
 });
 
-// Alternative widget schema for widgets without API endpoints (static/demo widgets)
 export const createWidgetWithoutApiSchema = z.object({
   name: z.string()
     .min(1, 'Widget name is required')
@@ -81,11 +97,28 @@ export const createWidgetWithoutApiSchema = z.object({
     width: z.number().min(1).optional(),
     height: z.number().min(1).optional(),
   }).optional(),
+
+  config: z.object({
+    selectedFields: z.array(z.string()),
+    fieldMappings: z.record(z.string(), z.string()),
+    formatSettings: z.object({
+      currency: z.string().optional(),
+      decimalPlaces: z.number().min(0).max(10).optional(),
+      dateFormat: z.string().optional(),
+      numberFormat: z.enum(['default', 'compact', 'scientific']).optional(),
+    }),
+    styling: z.object({
+      backgroundColor: z.string().optional(),
+      textColor: z.string().optional(),
+      borderColor: z.string().optional(),
+      borderRadius: z.number().min(0).max(50).optional(),
+      shadow: z.boolean().optional(),
+    }),
+  }).optional(),
 });
 
 export type CreateWidgetInput = z.infer<typeof createWidgetSchema>;
 
-// Widget configuration validation schema
 export const configureWidgetSchema = z.object({
   selectedFields: z.array(z.string()),
   
@@ -94,7 +127,6 @@ export const configureWidgetSchema = z.object({
   formatSettings: z.object({
     currency: z.string().optional(),
     decimalPlaces: z.number().min(0).max(10).optional(),
-    showPercentage: z.boolean().optional(),
     dateFormat: z.string().optional(),
     numberFormat: z.enum(['default', 'compact', 'scientific']).optional(),
   }),
@@ -125,7 +157,6 @@ export const curlCommandSchema = z.string()
 
 export type CurlCommandInput = z.infer<typeof curlCommandSchema>;
 
-// Form validation helper
 export const validateFormData = <T>(
   schema: z.ZodSchema<T>,
   data: unknown
@@ -146,33 +177,8 @@ export const validateFormData = <T>(
   }
 };
 
-// Common API categories for dropdowns
-export const API_CATEGORIES: { value: ApiCategory; label: string; description?: string }[] = [
-  { value: 'stocks', label: 'Stocks', description: 'Stock market data and quotes' },
-  { value: 'crypto', label: 'Cryptocurrency', description: 'Digital currency prices and data' },
-  { value: 'forex', label: 'Foreign Exchange', description: 'Currency exchange rates' },
-  { value: 'commodities', label: 'Commodities', description: 'Raw materials and primary products' },
-  { value: 'bonds', label: 'Bonds', description: 'Fixed income securities' },
-  { value: 'indices', label: 'Market Indices', description: 'Stock market indices and benchmarks' },
-  { value: 'economic', label: 'Economic Data', description: 'Economic indicators and statistics' },
-  { value: 'custom', label: 'Custom', description: 'Custom or other financial data' },
-];
-
-// Common display types for widgets
-export const DISPLAY_TYPES: { value: DisplayType; label: string; description: string }[] = [
-  { value: 'card', label: 'Card', description: 'Simple key-value display with clean layout' },
-  { value: 'table', label: 'Table', description: 'Tabular data display with rows and columns' },
-  { value: 'chart', label: 'Chart', description: 'Visual data representation with graphs' },
-];
-
-// Refresh interval presets
-export const REFRESH_INTERVALS = [
-  { value: 30, label: '30 seconds' },
-  { value: 60, label: '1 minute' },
-  { value: 300, label: '5 minutes' },
-  { value: 900, label: '15 minutes' },
-  { value: 1800, label: '30 minutes' },
-  { value: 3600, label: '1 hour' },
-  { value: 21600, label: '6 hours' },
-  { value: 86400, label: '24 hours' },
-];
+export { 
+  API_CATEGORIES, 
+  DISPLAY_TYPES, 
+  REFRESH_INTERVALS 
+} from '@/constants/widget-modal';

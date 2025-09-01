@@ -7,16 +7,15 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from ".";
 import { 
   type CreateWidgetInput,
   type CreateApiEndpointInput
-} from "@/lib/validation";
-import type { ApiEndpoint } from "@/types/widget";
-import { useWidgetForm } from "@/hooks/use-widget-form";
-import { useApiForm } from "@/hooks/use-api-form";
-import { WidgetForm } from "./add-widget-modal/widget-form";
-import { ApiForm } from "./add-widget-modal/api-form";
+} from ".";
+import { useWidgetForm } from ".";
+import type { ApiEndpoint } from ".";
+import { WidgetForm } from "./widget-form";
+import { ApiForm } from "./api-form";
 
 interface AddWidgetModalProps {
   isOpen: boolean;
@@ -36,7 +35,6 @@ export function AddWidgetModal({
   const [currentStep, setCurrentStep] = useState<ModalStep>('widget');
   
   const widgetForm = useWidgetForm();
-  const apiForm = useApiForm();
 
   const handleWidgetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +72,6 @@ export function AddWidgetModal({
   const handleClose = () => {
     setCurrentStep('widget');
     widgetForm.reset();
-    apiForm.reset();
     onClose();
   };
 
