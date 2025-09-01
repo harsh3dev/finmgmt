@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { apiService } from '@/lib/api-service';
 import { extractFieldsFromData, getMeaningfulFields, generateDisplayName } from '@/lib/utils';
 import type { CreateApiEndpointInput } from '@/lib/validation';
+import type { ApiEndpoint } from '@/types/widget';
 import type { FieldSelection } from './use-field-selection';
 
 export function useApiTesting() {
@@ -9,7 +10,7 @@ export function useApiTesting() {
   const [apiTestResult, setApiTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const testApi = async (
-    apiData: CreateApiEndpointInput,
+    apiData: CreateApiEndpointInput | Omit<ApiEndpoint, 'id' | 'createdAt' | 'updatedAt'>,
     onSuccess?: (responseData: Record<string, unknown> | unknown[]) => void
   ) => {
     if (!apiData.url) {
@@ -21,7 +22,17 @@ export function useApiTesting() {
     setApiTestResult(null);
 
     try {
-      const result = await apiService.testEndpoint(apiData);
+      // Create a clean API data object for testing
+      const apiDataForTesting = {
+        name: apiData.name,
+        url: apiData.url,
+        category: apiData.category,
+        headers: apiData.headers,
+        apiKey: apiData.apiKey,
+        description: apiData.description,
+      };
+
+      const result = await apiService.testEndpoint(apiDataForTesting);
       
       if (result.status === 'success') {
         setApiTestResult({ success: true, message: 'API endpoint is working correctly!' });
@@ -64,12 +75,17 @@ export function useApiTesting() {
     setApiTestResult(null);
   };
 
+  const setTestResult = (result: { success: boolean; message: string }) => {
+    setApiTestResult(result);
+  };
+
   return {
     isTestingApi,
     apiTestResult,
     testApi,
     generateAutoFieldSelection,
     reset,
+    setTestResult,
     hasTestResult: apiTestResult !== null,
     isTestSuccessful: apiTestResult?.success === true
   };

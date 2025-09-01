@@ -31,6 +31,13 @@ export const createApiEndpointSchema = z.object({
     .or(z.literal('')),
   
   curlCommand: z.string().optional(),
+  
+  sampleResponse: z.union([
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+    z.null(),
+    z.undefined()
+  ]).optional(), // Cache API response for field selection
 });
 
 export type CreateApiEndpointInput = z.infer<typeof createApiEndpointSchema>;

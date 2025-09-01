@@ -15,8 +15,13 @@ import {
 import type { ApiEndpoint } from "@/types/widget";
 import { useWidgetForm } from "@/hooks/use-widget-form";
 import { useApiForm } from "@/hooks/use-api-form";
+import { useApiTesting } from "@/hooks/use-api-testing";
+import { useFieldSelection } from "@/hooks/use-field-selection";
 import { WidgetForm } from "./add-widget-modal/widget-form";
 import { ApiForm } from "./add-widget-modal/api-form";
+import { ApiTesting } from "./add-widget-modal/api-testing";
+import { FieldSelection } from "./add-widget-modal/field-selection";
+import { Button } from "@/components/ui/button";
 
 interface AddWidgetModalProps {
   isOpen: boolean;
@@ -25,7 +30,7 @@ interface AddWidgetModalProps {
   apiEndpoints: ApiEndpoint[];
 }
 
-type ModalStep = 'widget' | 'api';
+type ModalStep = 'widget' | 'field-selection' | 'api';
 
 export function AddWidgetModal({ 
   isOpen, 
@@ -34,9 +39,12 @@ export function AddWidgetModal({
   apiEndpoints 
 }: AddWidgetModalProps) {
   const [currentStep, setCurrentStep] = useState<ModalStep>('widget');
+  const [selectedApiEndpoint, setSelectedApiEndpoint] = useState<ApiEndpoint | null>(null);
   
   const widgetForm = useWidgetForm();
   const apiForm = useApiForm();
+  const apiTesting = useApiTesting();
+  const fieldSelection = useFieldSelection();
 
   const handleWidgetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,16 +52,61 @@ export function AddWidgetModal({
     const validation = widgetForm.validateForm();
     if (!validation.success || !validation.data) return;
 
-    // If using existing API, submit directly
+    // If using existing API, proceed to field selection
     const hasApiEndpoint = widgetForm.widgetData.apiEndpointId && 
                           widgetForm.widgetData.apiEndpointId !== 'new';
     
     if (hasApiEndpoint) {
-      onSubmit(validation.data);
-      handleClose();
+      const selectedEndpoint = apiEndpoints.find(api => api.id === widgetForm.widgetData.apiEndpointId);
+      if (selectedEndpoint) {
+        setSelectedApiEndpoint(selectedEndpoint);
+        setCurrentStep('field-selection');
+        
+        // If we have cached sample response, load it immediately
+        if (selectedEndpoint.sampleResponse) {
+          const autoFieldSelection = apiTesting.generateAutoFieldSelection(selectedEndpoint.sampleResponse);
+          fieldSelection.updateFieldSelection(autoFieldSelection);
+          apiTesting.setTestResult({ success: true, message: 'Using cached API response' });
+        }
+      }
     } else if (widgetForm.widgetData.apiEndpointId === 'new') {
       setCurrentStep('api');
     }
+  };
+
+  const handleFieldSelectionSubmit = () => {
+    // Submit widget with selected fields from existing API
+    const enhancedWidgetData = {
+      ...widgetForm.widgetData,
+      config: {
+        selectedFields: fieldSelection.fieldSelection.selectedFields,
+        fieldMappings: fieldSelection.fieldSelection.fieldMappings,
+        formatSettings: {},
+        styling: {}
+      }
+    };
+    
+    onSubmit(enhancedWidgetData);
+    handleClose();
+  };
+
+  const handleTestExistingApi = async () => {
+    if (!selectedApiEndpoint) return;
+    
+    // If we have cached sample response, use it instead of making a new API call
+    if (selectedApiEndpoint.sampleResponse) {
+      const autoFieldSelection = apiTesting.generateAutoFieldSelection(selectedApiEndpoint.sampleResponse);
+      fieldSelection.updateFieldSelection(autoFieldSelection);
+      // Set the test result as successful
+      apiTesting.setTestResult({ success: true, message: 'Using cached API response' });
+      return;
+    }
+    
+    // Otherwise, make a real API call
+    await apiTesting.testApi(selectedApiEndpoint, (responseData) => {
+      const autoFieldSelection = apiTesting.generateAutoFieldSelection(responseData);
+      fieldSelection.updateFieldSelection(autoFieldSelection);
+    });
   };
 
   const handleApiSubmit = (apiData: CreateApiEndpointInput, selectedFields: string[], fieldMappings: Record<string, string>) => {
@@ -73,8 +126,11 @@ export function AddWidgetModal({
 
   const handleClose = () => {
     setCurrentStep('widget');
+    setSelectedApiEndpoint(null);
     widgetForm.reset();
     apiForm.reset();
+    apiTesting.reset();
+    fieldSelection.reset();
     onClose();
   };
 
@@ -98,6 +154,76 @@ export function AddWidgetModal({
               onSubmit={handleWidgetSubmit}
               onCancel={handleClose}
             />
+          </>
+        )}
+
+        {currentStep === 'field-selection' && selectedApiEndpoint && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Configure Fields for {widgetForm.widgetData.name}</DialogTitle>
+              <DialogDescription>
+                Test the API connection and select which fields to display in your widget.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* API Testing Section */}
+              <ApiTesting
+                isTestingApi={apiTesting.isTestingApi}
+                apiTestResult={apiTesting.apiTestResult}
+                onTest={handleTestExistingApi}
+                disabled={false}
+              />
+
+              {/* Show info about cached response */}
+              {selectedApiEndpoint?.sampleResponse && apiTesting.apiTestResult?.success && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    ℹ️ Using cached API response from when this endpoint was created. Click &quot;Test API&quot; above to fetch fresh data if needed.
+                  </p>
+                </div>
+              )}
+
+              {/* Field Selection Section */}
+              {fieldSelection.hasResponseData && apiTesting.isTestSuccessful && (
+                <FieldSelection
+                  responseData={fieldSelection.fieldSelection.responseData}
+                  selectedFields={fieldSelection.fieldSelection.selectedFields}
+                  fieldMappings={fieldSelection.fieldSelection.fieldMappings}
+                  onFieldToggle={fieldSelection.toggleFieldSelection}
+                  onFieldMappingChange={fieldSelection.updateFieldMapping}
+                  onPreviewField={fieldSelection.setPreviewField}
+                />
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setCurrentStep('widget')}
+                >
+                  Back
+                </Button>
+                <Button 
+                  type="button"
+                  onClick={handleFieldSelectionSubmit}
+                  disabled={
+                    !apiTesting.apiTestResult?.success ||
+                    (fieldSelection.hasResponseData && fieldSelection.fieldSelection.selectedFields.length === 0)
+                  }
+                >
+                  {!apiTesting.apiTestResult?.success
+                    ? 'Test API Connection First'
+                    : fieldSelection.hasResponseData 
+                      ? fieldSelection.fieldSelection.selectedFields.length === 0 
+                        ? 'Select Fields to Continue'
+                        : `Create Widget with ${fieldSelection.fieldSelection.selectedFields.length} Field${fieldSelection.fieldSelection.selectedFields.length !== 1 ? 's' : ''}`
+                      : 'Create Widget'
+                  }
+                </Button>
+              </div>
+            </div>
           </>
         )}
 

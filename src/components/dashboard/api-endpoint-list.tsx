@@ -1,9 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, ExternalLink } from "lucide-react";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Trash2, ExternalLink, AlertTriangle } from "lucide-react";
 import type { ApiEndpoint } from "@/types/widget";
 
 interface ApiEndpointListProps {
@@ -12,6 +21,16 @@ interface ApiEndpointListProps {
 }
 
 export function ApiEndpointList({ apiEndpoints, onDeleteEndpoint }: ApiEndpointListProps) {
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    apiId: string;
+    apiName: string;
+  }>({
+    isOpen: false,
+    apiId: '',
+    apiName: ''
+  });
+
   const getCategoryColor = (category: string) => {
     const colors = {
       stocks: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
@@ -27,9 +46,28 @@ export function ApiEndpointList({ apiEndpoints, onDeleteEndpoint }: ApiEndpointL
   };
 
   const handleDelete = (apiId: string, apiName: string) => {
-    if (window.confirm(`Are you sure you want to delete "${apiName}"? This action cannot be undone.`)) {
-      onDeleteEndpoint(apiId);
-    }
+    setDeleteDialog({
+      isOpen: true,
+      apiId,
+      apiName
+    });
+  };
+
+  const confirmDelete = () => {
+    onDeleteEndpoint(deleteDialog.apiId);
+    setDeleteDialog({
+      isOpen: false,
+      apiId: '',
+      apiName: ''
+    });
+  };
+
+  const cancelDelete = () => {
+    setDeleteDialog({
+      isOpen: false,
+      apiId: '',
+      apiName: ''
+    });
   };
 
   if (apiEndpoints.length === 0) {
@@ -58,7 +96,7 @@ export function ApiEndpointList({ apiEndpoints, onDeleteEndpoint }: ApiEndpointL
         <Badge variant="secondary">{apiEndpoints.length} endpoint{apiEndpoints.length !== 1 ? 's' : ''}</Badge>
       </div>
       
-      <div className="grid gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {apiEndpoints.map((endpoint) => (
           <Card key={endpoint.id}>
             <CardHeader>
@@ -132,6 +170,30 @@ export function ApiEndpointList({ apiEndpoints, onDeleteEndpoint }: ApiEndpointL
           </Card>
         ))}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialog.isOpen} onOpenChange={(open) => !open && cancelDelete()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete API Endpoint
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &quot;{deleteDialog.apiName}&quot;? 
+              This action cannot be undone and may affect any widgets using this API endpoint.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={cancelDelete}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

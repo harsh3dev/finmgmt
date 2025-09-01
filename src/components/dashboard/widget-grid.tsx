@@ -3,7 +3,15 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, RefreshCw, Clock } from "lucide-react";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Settings, RefreshCw, Clock, Trash2, AlertTriangle } from "lucide-react";
 import { apiService } from "@/lib/api-service";
 import { CurrencyValue } from "./currency-value";
 import type { Widget, ApiResponse, ApiEndpoint } from "@/types/widget";
@@ -12,11 +20,19 @@ interface WidgetGridProps {
   widgets: Widget[];
   apiEndpoints: ApiEndpoint[];
   onConfigureWidget: (widget: Widget) => void;
+  onRemoveWidget: (widgetId: string) => void;
 }
 
-export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetGridProps) {
+export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveWidget }: WidgetGridProps) {
   const [widgetData, setWidgetData] = useState<Record<string, ApiResponse>>({});
   const [refreshTimers, setRefreshTimers] = useState<Record<string, NodeJS.Timeout>>({});
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    widget: Widget | null;
+  }>({
+    isOpen: false,
+    widget: null
+  });
 
   // Fetch data for a specific widget
   const fetchWidgetData = async (widget: Widget) => {
@@ -98,6 +114,31 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
     fetchWidgetData(widget);
   };
 
+  // Handle widget removal with confirmation
+  const handleRemoveWidget = (widget: Widget) => {
+    setDeleteDialog({
+      isOpen: true,
+      widget: widget
+    });
+  };
+
+  const confirmDelete = () => {
+    if (deleteDialog.widget) {
+      onRemoveWidget(deleteDialog.widget.id);
+    }
+    setDeleteDialog({
+      isOpen: false,
+      widget: null
+    });
+  };
+
+  const cancelDelete = () => {
+    setDeleteDialog({
+      isOpen: false,
+      widget: null
+    });
+  };
+
   // Format field value based on widget config
   const formatValue = (value: unknown, widget: Widget, apiData?: unknown): React.ReactNode => {
     // Use CurrencyValue component for currency formatting with real conversion
@@ -134,12 +175,46 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
       return value ? 'Yes' : 'No';
     }
     
-    // For objects or arrays, show a preview
+    // For objects or arrays, try to extract meaningful values
     if (typeof value === 'object') {
       if (Array.isArray(value)) {
+        if (value.length === 0) return 'Empty array';
+        
+        // If array contains primitives, show them as comma-separated
+        if (value.every(item => typeof item !== 'object')) {
+          return value.slice(0, 3).join(', ') + (value.length > 3 ? '...' : '');
+        }
+        
+        // If array contains objects, try to show first item's meaningful data
+        const firstItem = value[0];
+        if (firstItem && typeof firstItem === 'object') {
+          const keys = Object.keys(firstItem as Record<string, unknown>);
+          const firstKey = keys[0];
+          if (firstKey) {
+            const firstValue = (firstItem as Record<string, unknown>)[firstKey];
+            return `${firstValue} (${value.length} items)`;
+          }
+        }
+        
         return `Array (${value.length} items)`;
       }
-      return 'Object';
+      
+      // For objects, try to show meaningful key-value pairs
+      const obj = value as Record<string, unknown>;
+      const keys = Object.keys(obj);
+      
+      if (keys.length === 0) return 'Empty object';
+      
+      // Show first few key-value pairs
+      const pairs = keys.slice(0, 2).map(key => {
+        const val = obj[key];
+        if (typeof val === 'object') {
+          return `${key}: ${Array.isArray(val) ? `Array(${val.length})` : 'Object'}`;
+        }
+        return `${key}: ${val}`;
+      });
+      
+      return pairs.join(', ') + (keys.length > 2 ? '...' : '');
     }
     
     return String(value);
@@ -182,13 +257,26 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
     if (!widget.config || !widget.config.selectedFields || widget.config.selectedFields.length === 0) {
       return (
         <div className="space-y-2">
-          <p className="text-muted-foreground text-sm">Configure this widget to select fields</p>
-          <pre className="text-xs bg-muted p-2 rounded overflow-hidden max-h-32">
-            {JSON.stringify(data.data, null, 2).slice(0, 500)}...
-          </pre>
-          <p className="text-xs text-muted-foreground">
-            Data available: {Object.keys(data.data || {}).length} fields
+          <p className="text-muted-foreground text-sm">
+            This widget needs to be configured to select fields
           </p>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => onConfigureWidget(widget)}
+              className="text-xs"
+            >
+              Configure Widget
+            </Button>
+          </div>
+          <details className="text-xs">
+            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+              Show raw data preview ({Object.keys(data.data || {}).length} fields)
+            </summary>
+            <pre className="mt-2 bg-muted p-2 rounded overflow-hidden max-h-32">
+              {JSON.stringify(data.data, null, 2).slice(0, 500)}...
+            </pre>
+          </details>
         </div>
       );
     }
@@ -263,15 +351,24 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
     if (!obj || typeof obj !== 'object') return null;
     
     return path.split('.').reduce((current: unknown, key: string) => {
-      if (current && typeof current === 'object' && !Array.isArray(current)) {
-        return (current as Record<string, unknown>)[key];
-      } else if (Array.isArray(current) && current.length > 0) {
-        // If it's an array, try to get the field from the first item
-        const firstItem = current[0];
-        if (firstItem && typeof firstItem === 'object') {
-          return (firstItem as Record<string, unknown>)[key];
+      if (current === null || current === undefined) return null;
+      
+      if (typeof current === 'object') {
+        if (Array.isArray(current)) {
+          // If it's an array, try to get the field from the first item
+          if (current.length > 0) {
+            const firstItem = current[0];
+            if (firstItem && typeof firstItem === 'object') {
+              return (firstItem as Record<string, unknown>)[key];
+            }
+          }
+          return null;
+        } else {
+          // Regular object access
+          return (current as Record<string, unknown>)[key];
         }
       }
+      
       return null;
     }, obj);
   };
@@ -301,6 +398,7 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
                     variant="ghost"
                     onClick={() => handleManualRefresh(widget)}
                     disabled={data.status === 'loading'}
+                    title="Refresh widget data"
                   >
                     <RefreshCw className={`h-4 w-4 ${data.status === 'loading' ? 'animate-spin' : ''}`} />
                   </Button>
@@ -308,8 +406,18 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
                     size="sm"
                     variant="ghost"
                     onClick={() => onConfigureWidget(widget)}
+                    title="Configure widget"
                   >
                     <Settings className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleRemoveWidget(widget)}
+                    title="Remove widget"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -326,6 +434,30 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget }: WidgetG
           </Card>
         );
       })}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialog.isOpen} onOpenChange={(open) => !open && cancelDelete()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Remove Widget
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove the widget &quot;{deleteDialog.widget?.name}&quot;? 
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={cancelDelete}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

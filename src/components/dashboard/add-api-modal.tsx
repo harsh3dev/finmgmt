@@ -120,7 +120,9 @@ export function AddApiModal({
   };
 
   const handleTestApi = async () => {
-    let dataToTest = { ...formData };
+    let dataToTest: Omit<CreateApiEndpointInput, 'sampleResponse'> & {
+      sampleResponse?: Record<string, unknown> | unknown[] | null;
+    } = { ...formData };
 
     // Clear previous test results
     setApiTestResult(null);

@@ -56,6 +56,7 @@ export interface ApiEndpoint {
   description?: string;
   category: ApiCategory;
   rateLimit?: RateLimit;
+  sampleResponse?: Record<string, unknown> | unknown[] | null; // Cache the API response structure
   createdAt: Date;
   updatedAt: Date;
 }

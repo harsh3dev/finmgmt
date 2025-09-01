@@ -3,13 +3,21 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AddWidgetModal } from "@/components/dashboard/add-widget-modal";
 import { AddApiModal } from "@/components/dashboard/add-api-modal";
 import { ConfigureWidgetModal } from "@/components/dashboard/configure-widget-modal";
 import { WidgetGrid } from "@/components/dashboard/widget-grid";
 import { ApiEndpointList } from "@/components/dashboard/api-endpoint-list";
-import { Plus, Settings, Database } from "lucide-react";
+import { Plus, Settings, Database, AlertTriangle } from "lucide-react";
 import { 
   type CreateWidgetInput, 
   type CreateApiEndpointInput, 
@@ -27,6 +35,15 @@ export default function DashboardPage() {
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
   const [isAddApiModalOpen, setIsAddApiModalOpen] = useState(false);
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false);
+  const [warningDialog, setWarningDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
   
   // Active tab state
   const [activeTab, setActiveTab] = useState<'widgets' | 'apis'>('widgets');
@@ -76,6 +93,7 @@ export default function DashboardPage() {
         apiKey: newApiEndpoint.apiKey,
         description: newApiEndpoint.description,
         category: newApiEndpoint.category,
+        sampleResponse: newApiEndpoint.sampleResponse as Record<string, unknown> | unknown[] | null | undefined, // Store sample response for future field selection
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -96,6 +114,7 @@ export default function DashboardPage() {
       id: crypto.randomUUID(),
       name: widgetData.name,
       apiUrl: apiEndpoint.url,
+      apiEndpointId: apiEndpoint.id, // Add the API endpoint ID reference
       refreshInterval: widgetData.refreshInterval,
       displayType: widgetData.displayType,
       position: {
@@ -146,6 +165,10 @@ export default function DashboardPage() {
     setSelectedWidget(null);
   };
 
+  const handleRemoveWidget = (widgetId: string) => {
+    setWidgets(prev => prev.filter(widget => widget.id !== widgetId));
+  };
+
   // API endpoint management functions
   const handleAddApiEndpoint = (apiData: CreateApiEndpointInput) => {
     const newEndpoint: ApiEndpoint = {
@@ -156,6 +179,7 @@ export default function DashboardPage() {
       apiKey: apiData.apiKey,
       description: apiData.description,
       category: apiData.category,
+      sampleResponse: apiData.sampleResponse as Record<string, unknown> | unknown[] | null | undefined, // Store sample response for future field selection
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -172,7 +196,11 @@ export default function DashboardPage() {
     });
 
     if (widgetsUsingApi.length > 0) {
-      alert(`Cannot delete API endpoint. It is being used by ${widgetsUsingApi.length} widget(s).`);
+      setWarningDialog({
+        isOpen: true,
+        title: "Cannot Delete API Endpoint",
+        message: `This API endpoint is being used by ${widgetsUsingApi.length} widget${widgetsUsingApi.length !== 1 ? 's' : ''}. Please remove or reconfigure the dependent widgets before deleting this API endpoint.`
+      });
       return;
     }
 
@@ -266,6 +294,7 @@ export default function DashboardPage() {
                 widgets={widgets}
                 apiEndpoints={apiEndpoints}
                 onConfigureWidget={handleConfigureWidget}
+                onRemoveWidget={handleRemoveWidget}
               />
             )}
           </div>
@@ -304,6 +333,29 @@ export default function DashboardPage() {
         }}
         onSubmit={handleUpdateWidgetConfig}
       />
+
+      {/* Warning Dialog */}
+      <Dialog open={warningDialog.isOpen} onOpenChange={(open) => !open && setWarningDialog(prev => ({ ...prev, isOpen: false }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {warningDialog.title}
+            </DialogTitle>
+            <DialogDescription>
+              {warningDialog.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setWarningDialog(prev => ({ ...prev, isOpen: false }))}
+            >
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
