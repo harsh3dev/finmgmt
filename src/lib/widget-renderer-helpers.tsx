@@ -292,7 +292,8 @@ export const formatSmartValue = (value: unknown): React.ReactNode => {
  */
 export const renderCardView = (
   widget: Widget, 
-  data: unknown
+  data: unknown,
+  compact = false
 ): React.ReactNode => {
   if (!widget.config?.selectedFields || widget.config.selectedFields.length === 0) {
     return (
@@ -302,25 +303,39 @@ export const renderCardView = (
     );
   }
 
+  const fieldsToShow = compact ? widget.config.selectedFields.slice(0, 4) : widget.config.selectedFields;
+
   return (
-    <div className="space-y-4">
-      {widget.config.selectedFields.map(field => {
+    <div className={compact ? "space-y-3" : "space-y-4"}>
+      {!compact && widget.config.selectedFields.length > 4 && (
+        <div className="text-xs text-muted-foreground mb-3 pb-2 border-b border-border/20">
+          Showing all {widget.config.selectedFields.length} fields
+        </div>
+      )}
+      {fieldsToShow.map(field => {
         const value = getNestedValue(data, field);
         const displayName = widget.config.fieldMappings[field] || field.split('.').pop() || field;
         
         return (
-          <div key={field} className="space-y-2">
+          <div key={field} className={compact ? "space-y-1" : "space-y-2"}>
             <div className="flex items-center justify-between">
-              <label className="font-medium text-sm text-muted-foreground">
+              <label className={`font-medium text-muted-foreground ${compact ? "text-xs" : "text-sm"}`}>
                 {displayName}
               </label>
             </div>
             <div className="pl-1">
-              {formatSmartValue(value)}
+              <div className={compact ? "text-sm" : ""}>
+                {formatSmartValue(value)}
+              </div>
             </div>
           </div>
         );
       })}
+      {compact && widget.config.selectedFields.length > 4 && (
+        <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border/20">
+          +{widget.config.selectedFields.length - 4} more fields
+        </div>
+      )}
     </div>
   );
 };
@@ -330,10 +345,11 @@ export const renderCardView = (
  */
 export const renderTableView = (
   widget: Widget, 
-  data: unknown
+  data: unknown,
+  compact = false
 ): React.ReactNode => {
   if (!Array.isArray(data)) {
-    return renderCardView(widget, data);
+    return renderCardView(widget, data, compact);
   }
 
   if (data.length === 0) {
@@ -347,15 +363,15 @@ export const renderTableView = (
   const firstItem = data[0];
   if (typeof firstItem !== 'object' || firstItem === null) {
     // Array of primitives - render as list
-    return renderListView(widget, data);
+    return renderListView(widget, data, compact);
   }
 
   const headers = Object.keys(firstItem as Record<string, unknown>);
-  const displayHeaders = headers.slice(0, 5); // Limit columns for readability
-  const maxRows = 10; // Limit rows for performance
+  const displayHeaders = headers.slice(0, compact ? 4 : 6); // Limit columns for readability
+  const maxRows = compact ? 4 : 10; // Limit rows for performance
 
   return (
-    <div className="space-y-3">
+    <div className={compact ? "space-y-2" : "space-y-3"}>
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="text-xs">
           Table View • {data.length} rows
@@ -372,7 +388,7 @@ export const renderTableView = (
           <thead>
             <tr className="border-b border-border">
               {displayHeaders.map(header => (
-                <th key={header} className="text-left p-2 font-medium text-xs uppercase tracking-wide">
+                <th key={header} className={`text-left p-2 font-medium tracking-wide ${compact ? "text-xs px-1" : "text-xs uppercase px-2"}`}>
                   {header.replace(/_/g, ' ')}
                 </th>
               ))}
@@ -384,8 +400,8 @@ export const renderTableView = (
               return (
                 <tr key={index} className="border-b border-border/50 hover:bg-accent/50">
                   {displayHeaders.map(header => (
-                    <td key={header} className="p-2 max-w-32">
-                      <div className="truncate">
+                    <td key={header} className={`${compact ? "p-1 max-w-16" : "p-2 max-w-20"}`}>
+                      <div className="truncate text-xs">
                         {formatSmartValue(obj[header])}
                       </div>
                     </td>
@@ -396,6 +412,13 @@ export const renderTableView = (
           </tbody>
         </table>
       </div>
+      {compact && (headers.length > 4 || data.length > maxRows) && (
+        <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border/20">
+          {headers.length > 4 && `+${headers.length - 4} more columns`}
+          {headers.length > 4 && data.length > maxRows && " • "}
+          {data.length > maxRows && `+${data.length - maxRows} more rows`}
+        </div>
+      )}
     </div>
   );
 };
@@ -405,10 +428,11 @@ export const renderTableView = (
  */
 export const renderListView = (
   widget: Widget, 
-  data: unknown
+  data: unknown,
+  compact = false
 ): React.ReactNode => {
   if (!Array.isArray(data)) {
-    return renderCardView(widget, data);
+    return renderCardView(widget, data, compact);
   }
 
   if (data.length === 0) {
@@ -419,11 +443,11 @@ export const renderListView = (
     );
   }
 
-  const maxItems = 15;
+  const maxItems = compact ? 4 : 12;
   const itemType = typeof data[0];
   
   return (
-    <div className="space-y-3">
+    <div className={compact ? "space-y-2" : "space-y-3"}>
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="text-xs">
           List View • {data.length} items ({itemType})
@@ -435,16 +459,23 @@ export const renderListView = (
         )}
       </div>
       
-      <div className="space-y-2 max-h-64 overflow-y-auto">
+      <div className={`space-y-1 overflow-y-auto ${compact ? "max-h-32" : "max-h-48"}`}>
         {data.slice(0, maxItems).map((item, index) => (
           <div 
             key={index} 
-            className="p-2 rounded border border-border/50 bg-accent/20"
+            className={`p-2 rounded border border-border/50 bg-accent/20 ${compact ? "text-xs p-1" : "text-sm p-2"}`}
           >
-            {formatSmartValue(item)}
+            <div className="truncate">
+              {formatSmartValue(item)}
+            </div>
           </div>
         ))}
       </div>
+      {compact && data.length > maxItems && (
+        <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border/20">
+          +{data.length - maxItems} more items
+        </div>
+      )}
     </div>
   );
 };
@@ -454,7 +485,8 @@ export const renderListView = (
  */
 export const renderChartView = (
   widget: Widget, 
-  data: unknown
+  data: unknown,
+  compact = false
 ): React.ReactNode => {
   const numericFields: Array<{ field: string; values: number[]; }> = [];
   
@@ -474,7 +506,7 @@ export const renderChartView = (
   }
 
   return (
-    <div className="space-y-4">
+    <div className={compact ? "space-y-2" : "space-y-4"}>
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="text-xs">
           Chart View • {numericFields.length} numeric fields detected
@@ -482,28 +514,28 @@ export const renderChartView = (
       </div>
       
       {numericFields.length > 0 ? (
-        <div className="space-y-4">
-          {numericFields.map(({ field, values }) => {
+        <div className={compact ? "space-y-2" : "space-y-4"}>
+          {(compact ? numericFields.slice(0, 2) : numericFields).map(({ field, values }) => {
             const avg = values.reduce((a, b) => a + b, 0) / values.length;
             const max = Math.max(...values);
             const min = Math.min(...values);
             
             return (
-              <div key={field} className="space-y-2">
-                <h4 className="font-medium text-sm">
+              <div key={field} className={compact ? "space-y-1" : "space-y-2"}>
+                <h4 className={`font-medium ${compact ? "text-xs" : "text-sm"}`}>
                   {widget.config.fieldMappings[field] || field}
                 </h4>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="p-3 rounded bg-blue-50 dark:bg-blue-900/20">
-                    <div className="text-2xl font-bold text-blue-600">{avg.toFixed(2)}</div>
+                <div className={`grid grid-cols-3 gap-2 text-center ${compact ? "text-xs" : ""}`}>
+                  <div className={`p-2 rounded bg-blue-50 dark:bg-blue-900/20 ${compact ? "p-1" : "p-3"}`}>
+                    <div className={`font-bold text-blue-600 ${compact ? "text-sm" : "text-2xl"}`}>{avg.toFixed(2)}</div>
                     <div className="text-xs text-blue-600/70">Average</div>
                   </div>
-                  <div className="p-3 rounded bg-green-50 dark:bg-green-900/20">
-                    <div className="text-2xl font-bold text-green-600">{max}</div>
+                  <div className={`p-2 rounded bg-green-50 dark:bg-green-900/20 ${compact ? "p-1" : "p-3"}`}>
+                    <div className={`font-bold text-green-600 ${compact ? "text-sm" : "text-2xl"}`}>{max}</div>
                     <div className="text-xs text-green-600/70">Maximum</div>
                   </div>
-                  <div className="p-3 rounded bg-red-50 dark:bg-red-900/20">
-                    <div className="text-2xl font-bold text-red-600">{min}</div>
+                  <div className={`p-2 rounded bg-red-50 dark:bg-red-900/20 ${compact ? "p-1" : "p-3"}`}>
+                    <div className={`font-bold text-red-600 ${compact ? "text-sm" : "text-2xl"}`}>{min}</div>
                     <div className="text-xs text-red-600/70">Minimum</div>
                   </div>
                 </div>
@@ -516,16 +548,24 @@ export const renderChartView = (
             );
           })}
           
-          <div className="mt-4 p-3 bg-accent/20 rounded-lg text-center">
-            <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Interactive charts coming soon
-            </p>
-          </div>
+          {compact && numericFields.length > 2 && (
+            <div className="text-xs text-muted-foreground text-center">
+              +{numericFields.length - 2} more fields
+            </div>
+          )}
+          
+          {!compact && (
+            <div className="mt-4 p-3 bg-accent/20 rounded-lg text-center">
+              <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Interactive charts coming soon
+              </p>
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-8 text-muted-foreground">
-          <BarChart3 className="h-8 w-8 mx-auto mb-2" />
+          <BarChart3 className={`mx-auto mb-2 ${compact ? "h-6 w-6" : "h-8 w-8"}`} />
           <p className="text-sm">No numeric fields available for charting</p>
           <p className="text-xs mt-1">Select numeric fields to enable chart view</p>
         </div>

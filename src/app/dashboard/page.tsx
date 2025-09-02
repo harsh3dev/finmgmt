@@ -15,7 +15,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { AddWidgetModal } from "@/components/dashboard/add-widget-modal";
 import { AddApiModal } from "@/components/dashboard/add-api-modal";
 import { ConfigureWidgetModal } from "@/components/dashboard/configure-widget-modal";
-import { WidgetGrid } from "@/components/dashboard/widget-grid";
+import { BentoGrid } from "@/components/dashboard/bento-grid";
 import { ApiEndpointList } from "@/components/dashboard/api-endpoint-list";
 import { Plus, Settings, Database, AlertTriangle } from "lucide-react";
 import { 
@@ -169,6 +169,11 @@ export default function DashboardPage() {
     setWidgets(prev => prev.filter(widget => widget.id !== widgetId));
   };
 
+  // Handle widget order updates from drag and drop
+  const handleUpdateWidgetOrder = (updatedWidgets: Widget[]) => {
+    setWidgets(updatedWidgets);
+  };
+
   // API endpoint management functions
   const handleAddApiEndpoint = (apiData: CreateApiEndpointInput) => {
     const newEndpoint: ApiEndpoint = {
@@ -210,11 +215,11 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold">Finance Dashboard</h1>
+      <header className="border-b sticky top-0 z-40 backdrop-blur-sm bg-card/95">
+        <div className="container mx-auto px-4 py-4 max-w-[2000px]">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <h1 className="text-xl sm:text-2xl font-bold">Finance Dashboard</h1>
               <div className="flex items-center space-x-2">
                 <Button
                   variant={activeTab === 'widgets' ? 'default' : 'outline'}
@@ -222,7 +227,8 @@ export default function DashboardPage() {
                   size="sm"
                 >
                   <Settings className="h-4 w-4 mr-2" />
-                  Widgets
+                  <span className="hidden sm:inline">Widgets</span>
+                  <span className="sm:hidden">W</span>
                 </Button>
                 <Button
                   variant={activeTab === 'apis' ? 'default' : 'outline'}
@@ -230,23 +236,30 @@ export default function DashboardPage() {
                   size="sm"
                 >
                   <Database className="h-4 w-4 mr-2" />
-                  APIs
+                  <span className="hidden sm:inline">APIs</span>
+                  <span className="sm:hidden">A</span>
                 </Button>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto">
               {activeTab === 'widgets' && (
                 <Button 
                   onClick={() => setIsAddWidgetModalOpen(true)}
+                  className="flex-1 sm:flex-none"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Widget
+                  <span className="hidden sm:inline">Add Widget</span>
+                  <span className="sm:hidden">Add</span>
                 </Button>
               )}
               {activeTab === 'apis' && (
-                <Button onClick={() => setIsAddApiModalOpen(true)}>
+                <Button 
+                  onClick={() => setIsAddApiModalOpen(true)}
+                  className="flex-1 sm:flex-none"
+                >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add API
+                  <span className="hidden sm:inline">Add API</span>
+                  <span className="sm:hidden">Add</span>
                 </Button>
               )}
               <ThemeToggle />
@@ -256,11 +269,11 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 py-6 max-w-[2000px]">
         {activeTab === 'widgets' && (
           <div className="space-y-6">
             {apiEndpoints.length === 0 ? (
-              <Card>
+              <Card className="max-w-2xl mx-auto">
                 <CardHeader>
                   <CardTitle>No API Endpoints</CardTitle>
                   <CardDescription>
@@ -275,7 +288,7 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             ) : widgets.length === 0 ? (
-              <Card>
+              <Card className="max-w-2xl mx-auto">
                 <CardHeader>
                   <CardTitle>No Widgets</CardTitle>
                   <CardDescription>
@@ -290,11 +303,12 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             ) : (
-              <WidgetGrid 
+              <BentoGrid 
                 widgets={widgets}
                 apiEndpoints={apiEndpoints}
                 onConfigureWidget={handleConfigureWidget}
                 onRemoveWidget={handleRemoveWidget}
+                onUpdateWidgetOrder={handleUpdateWidgetOrder}
               />
             )}
           </div>

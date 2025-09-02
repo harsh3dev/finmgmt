@@ -15,9 +15,10 @@ interface SmartWidgetRendererProps {
   widget: Widget;
   data: ApiResponse;
   onConfigureWidget: (widget: Widget) => void;
+  compact?: boolean;
 }
 
-export function SmartWidgetRenderer({ widget, data, onConfigureWidget }: SmartWidgetRendererProps) {
+export function SmartWidgetRenderer({ widget, data, onConfigureWidget, compact = false }: SmartWidgetRendererProps) {
   if (!data.data) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -70,16 +71,16 @@ export function SmartWidgetRenderer({ widget, data, onConfigureWidget }: SmartWi
   // Render based on display type
   switch (displayType) {
     case 'table':
-      return renderTableView(widget, data.data);
+      return renderTableView(widget, data.data, compact);
     
     case 'list':
-      return renderListView(widget, data.data);
+      return renderListView(widget, data.data, compact);
     
     case 'chart':
-      return renderChartView(widget, data.data);
+      return renderChartView(widget, data.data, compact);
     
     case 'card':
     default:
-      return renderCardView(widget, data.data);
+      return renderCardView(widget, data.data, compact);
   }
 }
