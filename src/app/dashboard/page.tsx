@@ -17,21 +17,26 @@ import { AddApiModal } from "@/components/dashboard/add-api-modal";
 import { ConfigureWidgetModal } from "@/components/dashboard/configure-widget-modal";
 import { BentoGrid } from "@/components/dashboard/bento-grid";
 import { ApiEndpointList } from "@/components/dashboard/api-endpoint-list";
-import { Plus, Settings, Database, AlertTriangle } from "lucide-react";
+import { DashboardTabs } from "@/components/dashboard/dashboard-tabs";
+import { ImportedContentTab } from "@/components/dashboard/imported-content-tab";
+import { ExportButton } from "@/components/dashboard/export-button";
+import { ImportButton } from "@/components/dashboard/import-button";
+import { Plus, Database, AlertTriangle } from "lucide-react";
 import { 
   type CreateWidgetInput, 
   type CreateApiEndpointInput, 
   type ConfigureWidgetInput 
 } from "@/lib/validation";
-import type { Widget, ApiEndpoint } from "@/types/widget";
+import { removeImportGroup } from "@/lib/import-tracker";
+import { exportDashboard } from "@/lib/dashboard-export";
+import type { Widget, ApiEndpoint, DashboardTab } from "@/types/widget";
+import type { ImportedContent } from "@/types/imported-content";
 
 export default function DashboardPage() {
-  // State management
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [apiEndpoints, setApiEndpoints] = useState<ApiEndpoint[]>([]);
   const [selectedWidget, setSelectedWidget] = useState<Widget | null>(null);
   
-  // Modal states
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
   const [isAddApiModalOpen, setIsAddApiModalOpen] = useState(false);
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false);
@@ -45,17 +50,27 @@ export default function DashboardPage() {
     message: ''
   });
   
-  // Active tab state
-  const [activeTab, setActiveTab] = useState<'widgets' | 'apis'>('widgets');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('widgets');
+  const [importedContent, setImportedContent] = useState<ImportedContent[]>([]);
 
-  // Load data from localStorage on mount
   useEffect(() => {
     const savedWidgets = localStorage.getItem('finance-dashboard-widgets');
     const savedApiEndpoints = localStorage.getItem('finance-dashboard-apis');
+    const savedImportedContent = localStorage.getItem('finance-dashboard-imports');
     
     if (savedWidgets) {
       try {
-        setWidgets(JSON.parse(savedWidgets));
+        const parsedWidgets = JSON.parse(savedWidgets);
+        const migratedWidgets = parsedWidgets.map((widget: Widget) => {
+          if (widget.isImported === undefined) {
+            return {
+              ...widget,
+              isImported: false
+            };
+          }
+          return widget;
+        });
+        setWidgets(migratedWidgets);
       } catch (error) {
         console.error('Error loading widgets:', error);
       }
@@ -63,10 +78,31 @@ export default function DashboardPage() {
     
     if (savedApiEndpoints) {
       try {
-        setApiEndpoints(JSON.parse(savedApiEndpoints));
+        const parsedApiEndpoints = JSON.parse(savedApiEndpoints);
+        const migratedApiEndpoints = parsedApiEndpoints.map((api: ApiEndpoint) => {
+          if (api.isImported === undefined) {
+            return {
+              ...api,
+              isImported: false
+            };
+          }
+          return api;
+        });
+        setApiEndpoints(migratedApiEndpoints);
       } catch (error) {
         console.error('Error loading API endpoints:', error);
       }
+    }
+
+    if (savedImportedContent) {
+      try {
+        setImportedContent(JSON.parse(savedImportedContent));
+      } catch (error) {
+        console.error('Error loading imported content:', error);
+        setImportedContent([]);
+      }
+    } else {
+      setImportedContent([]);
     }
   }, []);
 
@@ -79,11 +115,13 @@ export default function DashboardPage() {
     localStorage.setItem('finance-dashboard-apis', JSON.stringify(apiEndpoints));
   }, [apiEndpoints]);
 
-  // Widget management functions
+  useEffect(() => {
+    localStorage.setItem('finance-dashboard-imports', JSON.stringify(importedContent));
+  }, [importedContent]);
+
   const handleAddWidget = (widgetData: CreateWidgetInput, newApiEndpoint?: CreateApiEndpointInput) => {
     let apiEndpoint: ApiEndpoint;
 
-    // If a new API endpoint is provided, create it first
     if (newApiEndpoint) {
       apiEndpoint = {
         id: crypto.randomUUID(),
@@ -98,10 +136,8 @@ export default function DashboardPage() {
         updatedAt: new Date()
       };
 
-      // Add the new API endpoint to the list
       setApiEndpoints(prev => [...prev, apiEndpoint]);
     } else {
-      // Find existing API endpoint
       const existingEndpoint = apiEndpoints.find(api => api.id === widgetData.apiEndpointId);
       if (!existingEndpoint) {
         console.error('Selected API endpoint not found');
@@ -114,7 +150,7 @@ export default function DashboardPage() {
       id: crypto.randomUUID(),
       name: widgetData.name,
       apiUrl: apiEndpoint.url,
-      apiEndpointId: apiEndpoint.id, // Add the API endpoint ID reference
+      apiEndpointId: apiEndpoint.id,
       refreshInterval: widgetData.refreshInterval,
       displayType: widgetData.displayType,
       position: {
@@ -169,12 +205,10 @@ export default function DashboardPage() {
     setWidgets(prev => prev.filter(widget => widget.id !== widgetId));
   };
 
-  // Handle widget order updates from drag and drop
   const handleUpdateWidgetOrder = (updatedWidgets: Widget[]) => {
     setWidgets(updatedWidgets);
   };
 
-  // API endpoint management functions
   const handleAddApiEndpoint = (apiData: CreateApiEndpointInput) => {
     const newEndpoint: ApiEndpoint = {
       id: crypto.randomUUID(),
@@ -194,7 +228,6 @@ export default function DashboardPage() {
   };
 
   const handleDeleteApiEndpoint = (apiId: string) => {
-    // Check if any widgets are using this API
     const widgetsUsingApi = widgets.filter(widget => {
       const apiEndpoint = apiEndpoints.find(api => api.url === widget.apiUrl);
       return apiEndpoint?.id === apiId;
@@ -212,36 +245,102 @@ export default function DashboardPage() {
     setApiEndpoints(prev => prev.filter(api => api.id !== apiId));
   };
 
+  const handleImportSuccess = (importedWidgets: Widget[], importedApiEndpoints: ApiEndpoint[]) => {
+    setWidgets(prev => [...prev, ...importedWidgets]);
+    setApiEndpoints(prev => [...prev, ...importedApiEndpoints]);
+  };
+
+  const handleSwitchToImportedTab = () => {
+    setActiveTab('imported');
+  };
+
+  const handleDeleteImportSession = (importId: string) => {
+    const result = removeImportGroup(importId);
+    if (result.success) {
+      setWidgets(prev => prev.filter(w => !result.removedWidgets.includes(w.id)));
+      setApiEndpoints(prev => prev.filter(a => !result.removedApiEndpoints.includes(a.id)));
+      
+      setImportedContent(prev => prev.filter(session => session.importId !== importId));
+    } else {
+      setWarningDialog({
+        isOpen: true,
+        title: "Failed to Delete Import Session",
+        message: result.error || "An unknown error occurred while deleting the import session."
+      });
+    }
+  };
+
+  const handleBulkExportImportSession = (importId: string) => {
+    const sessionWidgets = widgets.filter(w => w.importId === importId);
+    const sessionApis = apiEndpoints.filter(a => a.importId === importId);
+    
+    if (sessionWidgets.length === 0 && sessionApis.length === 0) {
+      setWarningDialog({
+        isOpen: true,
+        title: "No Content to Export",
+        message: "This import session contains no widgets or API endpoints to export."
+      });
+      return;
+    }
+
+    const importSession = importedContent.find(session => session.importId === importId);
+    const exportName = importSession?.sourceName || 'Import Session';
+
+    exportDashboard(sessionWidgets, sessionApis, undefined, { 
+      exportName: `${exportName} - Re-export`
+    }).then(exportData => {
+      // Download the file
+      const jsonString = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const filename = `${exportName.toLowerCase().replace(/\s+/g, '-')}-re-export-${new Date().toISOString().split('T')[0]}.json`;
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }).catch(error => {
+      console.error('Export failed:', error);
+      setWarningDialog({
+        isOpen: true,
+        title: "Export Failed",
+        message: "Failed to export the import session. Please try again."
+      });
+    });
+  };
+
+  const userWidgets = widgets.filter(w => !w.isImported);
+  const userApiEndpoints = apiEndpoints.filter(a => !a.isImported);
+  const importedWidgets = widgets.filter(w => w.isImported);
+  const importedApiEndpoints = apiEndpoints.filter(a => a.isImported);
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b sticky top-0 z-40 backdrop-blur-sm bg-card/95">
         <div className="container mx-auto px-4 py-4 max-w-7xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <h1 className="text-xl sm:text-2xl font-bold">Finance Dashboard</h1>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant={activeTab === 'widgets' ? 'default' : 'outline'}
-                  onClick={() => setActiveTab('widgets')}
-                  size="sm"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Widgets</span>
-                  <span className="sm:hidden">W</span>
-                </Button>
-                <Button
-                  variant={activeTab === 'apis' ? 'default' : 'outline'}
-                  onClick={() => setActiveTab('apis')}
-                  size="sm"
-                >
-                  <Database className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">APIs</span>
-                  <span className="sm:hidden">A</span>
-                </Button>
-              </div>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto">
+              {/* Import/Export Buttons */}
+              <div className="flex items-center space-x-2">
+                <ImportButton
+                  onImportSuccess={handleImportSuccess}
+                  onSwitchToImportedTab={handleSwitchToImportedTab}
+                  size="sm"
+                />
+                <ExportButton
+                  widgets={widgets}
+                  apiEndpoints={apiEndpoints}
+                  size="sm"
+                />
+              </div>
+              
               {activeTab === 'widgets' && (
                 <Button 
                   onClick={() => setIsAddWidgetModalOpen(true)}
@@ -266,13 +365,25 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+        
+        {/* Tab Navigation */}
+        <div className="container mx-auto px-4 max-w-7xl">
+          <DashboardTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            widgetCount={userWidgets.length}
+            apiCount={userApiEndpoints.length}
+            importedWidgetCount={importedWidgets.length}
+            importedApiCount={importedApiEndpoints.length}
+          />
+        </div>
       </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 max-w-8xl">
         {activeTab === 'widgets' && (
           <div className="space-y-6">
-            {apiEndpoints.length === 0 ? (
+            {userApiEndpoints.length === 0 ? (
               <Card className="max-w-2xl mx-auto">
                 <CardHeader>
                   <CardTitle>No API Endpoints</CardTitle>
@@ -287,7 +398,7 @@ export default function DashboardPage() {
                   </Button>
                 </CardContent>
               </Card>
-            ) : widgets.length === 0 ? (
+            ) : userWidgets.length === 0 ? (
               <Card className="max-w-2xl mx-auto">
                 <CardHeader>
                   <CardTitle>No Widgets</CardTitle>
@@ -304,7 +415,7 @@ export default function DashboardPage() {
               </Card>
             ) : (
               <BentoGrid 
-                widgets={widgets}
+                widgets={userWidgets}
                 apiEndpoints={apiEndpoints}
                 onConfigureWidget={handleConfigureWidget}
                 onRemoveWidget={handleRemoveWidget}
@@ -317,10 +428,30 @@ export default function DashboardPage() {
         {activeTab === 'apis' && (
           <div className="space-y-6">
             <ApiEndpointList 
-              apiEndpoints={apiEndpoints}
+              apiEndpoints={userApiEndpoints}
               onDeleteEndpoint={handleDeleteApiEndpoint}
             />
           </div>
+        )}
+
+        {activeTab === 'imported' && (
+          <ImportedContentTab
+            importedWidgets={importedWidgets}
+            importedApiEndpoints={importedApiEndpoints}
+            allApiEndpoints={apiEndpoints}
+            onConfigureWidget={handleConfigureWidget}
+            onDeleteWidget={handleRemoveWidget}
+            onDeleteApi={handleDeleteApiEndpoint}
+            onUpdateWidgetOrder={(widgets) => {
+              // Update only imported widgets in the widget list
+              setWidgets(prev => [
+                ...prev.filter(w => !w.isImported),
+                ...widgets
+              ]);
+            }}
+            onDeleteImportSession={handleDeleteImportSession}
+            onBulkExportImportSession={handleBulkExportImportSession}
+          />
         )}
       </main>
 

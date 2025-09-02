@@ -11,6 +11,11 @@ export interface Widget {
   config: WidgetConfig;
   createdAt: Date;
   updatedAt: Date;
+  // Import tracking fields
+  isImported?: boolean;
+  importId?: string;
+  importSource?: string;
+  importDate?: Date;
 }
 
 export interface WidgetPosition {
@@ -59,6 +64,11 @@ export interface ApiEndpoint {
   sampleResponse?: Record<string, unknown> | unknown[] | null; // Cache the API response structure
   createdAt: Date;
   updatedAt: Date;
+  // Import tracking fields
+  isImported?: boolean;
+  importId?: string;
+  importSource?: string;
+  importDate?: Date;
 }
 
 export interface RateLimit {
@@ -227,3 +237,7 @@ export interface JsonExplorerData {
   rawData: Record<string, unknown> | unknown[] | null;
   selectedFields: string[];
 }
+
+// Tab types for import/export functionality
+export type DashboardTab = 'widgets' | 'apis' | 'imported';
+export type ImportedSubTab = 'widgets' | 'apis';

@@ -103,7 +103,14 @@ export function ApiEndpointList({ apiEndpoints, onDeleteEndpoint }: ApiEndpointL
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
                   <div className="flex items-center space-x-3">
-                    <CardTitle className="text-lg">{endpoint.name}</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      {endpoint.name}
+                      {endpoint.isImported && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          Imported
+                        </span>
+                      )}
+                    </CardTitle>
                     <Badge className={getCategoryColor(endpoint.category)}>
                       {endpoint.category}
                     </Badge>

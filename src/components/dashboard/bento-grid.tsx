@@ -38,26 +38,21 @@ import { SmartWidgetRenderer } from "./smart-widget-renderer";
 import type { Widget, ApiResponse, ApiEndpoint } from "@/types/widget";
 import { cn } from "@/lib/utils";
 
-// Helper function to determine if widget has more content to show
 function hasMoreContent(widget: Widget, data: ApiResponse): boolean {
   if (!data.data || data.status !== 'success') return false;
   
-  // Check if widget has configuration and selected fields
   if (!widget.config?.selectedFields || widget.config.selectedFields.length === 0) {
     return false;
   }
 
-  // For arrays, check if there are more than 4 items (since compact shows 4)
   if (Array.isArray(data.data)) {
     return data.data.length > 4;
   }
 
-  // For objects, check if there are more than 4 selected fields (since compact shows 4)
   if (widget.config.selectedFields.length > 4) {
     return true;
   }
 
-  // Check if any field contains large content
   for (const field of widget.config.selectedFields) {
     const value = getNestedValue(data.data, field);
     if (Array.isArray(value) && value.length > 3) {
@@ -71,7 +66,6 @@ function hasMoreContent(widget: Widget, data: ApiResponse): boolean {
   return false;
 }
 
-// Helper function to get nested object value by dot notation with array support
 function getNestedValue(obj: unknown, path: string): unknown {
   if (!obj || !path) return null;
   
@@ -135,7 +129,6 @@ interface BentoWidgetProps {
   isDragging?: boolean;
 }
 
-// Sortable widget component
 function SortableWidget({
   widget,
   data,
@@ -169,18 +162,17 @@ function SortableWidget({
       style={style}
       className={cn(
         "relative group transition-all duration-300 ease-in-out",
-        "min-w-[350px] w-full h-fit", // Height fits content
+        "min-w-[350px] w-full h-fit",
         isDragging && "z-50 opacity-50"
       )}
     >
       <Card className={cn(
         "transition-all duration-300 border-2 flex flex-col",
         "border-border hover:border-primary/30",
-        "hover:shadow-md min-h-[320px]", // Minimum height for consistency
-        "h-fit", // Height fits content, not grid row
+        "hover:shadow-md min-h-[320px]",
+        "h-fit",
         isExpanded && "border-primary/20 shadow-lg"
       )}>
-        {/* Drag Handle */}
         <div
           {...attributes}
           {...listeners}
@@ -194,8 +186,13 @@ function SortableWidget({
         <CardHeader className="pb-3 px-4 pt-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0 ml-8">
-              <CardTitle className="text-lg truncate">
+              <CardTitle className="text-lg truncate flex items-center gap-2">
                 {widget.name}
+                {widget.isImported && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    Imported
+                  </span>
+                )}
               </CardTitle>
               <CardDescription className="text-sm">
                 {widget.displayType} • {widget.refreshInterval}s refresh
@@ -296,7 +293,6 @@ function SortableWidget({
   );
 }
 
-// Render widget content helper
 function renderWidgetContent(
   widget: Widget, 
   data: ApiResponse, 
@@ -368,10 +364,8 @@ export function BentoGrid({
     })
   );
 
-  // Memoize widget IDs for sortable context
   const widgetIds = useMemo(() => widgets.map(widget => widget.id), [widgets]);
 
-  // Fetch data for a specific widget
   const fetchWidgetData = async (widget: Widget, options: { bypassCache?: boolean } = {}) => {
     setWidgetData(prev => ({
       ...prev,
@@ -379,7 +373,6 @@ export function BentoGrid({
     }));
 
     try {
-      // Find the API endpoint for this widget
       let endpoint = apiEndpoints.find(api => api.id === widget.apiEndpointId);
       
       if (!endpoint) {
@@ -417,7 +410,6 @@ export function BentoGrid({
     }
   };
 
-  // Set up auto-refresh for widgets
   useEffect(() => {
     Object.values(refreshTimers).forEach(timer => clearInterval(timer));
 
@@ -441,7 +433,6 @@ export function BentoGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [widgets]);
 
-  // Manual refresh with cache bypass
   const handleManualRefresh = async (widget: Widget) => {
     setManualRefreshStates(prev => ({ ...prev, [widget.id]: true }));
     
@@ -489,12 +480,10 @@ export function BentoGrid({
     }
   };
 
-  // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
 
-  // Handle drag end
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -509,7 +498,6 @@ export function BentoGrid({
     setActiveId(null);
   };
 
-  // Handle widget expansion
   const handleExpand = (widgetId: string) => {
     setExpandedWidget(widgetId);
   };
@@ -518,7 +506,6 @@ export function BentoGrid({
     setExpandedWidget(null);
   };
 
-  // Handle widget removal with confirmation
   const handleRemoveWidget = (widget: Widget) => {
     setDeleteDialog({
       isOpen: true,
@@ -529,7 +516,6 @@ export function BentoGrid({
   const confirmDelete = () => {
     if (deleteDialog.widget) {
       onRemoveWidget(deleteDialog.widget.id);
-      // Collapse if this widget was expanded
       if (expandedWidget === deleteDialog.widget.id) {
         setExpandedWidget(null);
       }
@@ -562,13 +548,12 @@ export function BentoGrid({
         <SortableContext items={widgetIds} strategy={rectSortingStrategy}>
           <div className={cn(
             "grid gap-4 transition-all duration-300 items-start",
-            // Responsive grid with proper minimum widths for 350px cards
-            "grid-cols-1", // Mobile: 1 column (for screens < 640px)
-            "sm:grid-cols-1", // Small: 1 column (640px-768px, since 2*350px + gaps = ~740px)
-            "md:grid-cols-2", // Medium: 2 columns (768px-1024px, 2*350px + gaps = ~740px fits)
-            "lg:grid-cols-2", // Large: 2 columns (1024px-1280px)
-            "xl:grid-cols-3", // Extra large: 3 columns (1280px-1536px, 3*350px + gaps = ~1100px)
-            "2xl:grid-cols-4", // 2XL: 4 columns (1536px+, 4*350px + gaps = ~1450px)
+            "grid-cols-1", // Mobile
+            "sm:grid-cols-1", // Small
+            "md:grid-cols-2", // Medium
+            "lg:grid-cols-2", // Large
+            "xl:grid-cols-3", // Extra large
+            "2xl:grid-cols-4", // 2XL
           )}
           style={{ gridAutoRows: 'min-content' }}>
             {widgets.map(widget => {
@@ -594,7 +579,6 @@ export function BentoGrid({
           </div>
         </SortableContext>
 
-        {/* Drag Overlay */}
         <DragOverlay>
           {activeId ? (
             <div className="opacity-80">
