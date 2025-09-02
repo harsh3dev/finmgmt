@@ -9,7 +9,7 @@
 /* Smooth transitions for widget expansion/collapse */
 .bento-widget {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 280px; /* Minimum width for content */
+  min-width: 350px; /* Minimum width for content */
   width: 100%;
 }
 
@@ -58,31 +58,31 @@
 
 @media (min-width: 641px) and (max-width: 768px) {
   .bento-grid-container {
-    grid-template-columns: repeat(2, minmax(280px, 1fr));
+    grid-template-columns: 1fr; /* Single column for small screens */
   }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
   .bento-grid-container {
-    grid-template-columns: repeat(2, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, minmax(350px, 1fr));
   }
 }
 
 @media (min-width: 1025px) and (max-width: 1280px) {
   .bento-grid-container {
-    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    grid-template-columns: repeat(2, minmax(350px, 1fr));
   }
 }
 
 @media (min-width: 1281px) and (max-width: 1536px) {
   .bento-grid-container {
-    grid-template-columns: repeat(4, minmax(280px, 1fr));
+    grid-template-columns: repeat(3, minmax(350px, 1fr));
   }
 }
 
 @media (min-width: 1537px) {
   .bento-grid-container {
-    grid-template-columns: repeat(5, minmax(280px, 1fr));
+    grid-template-columns: repeat(4, minmax(350px, 1fr));
   }
 }
 
@@ -203,6 +203,6 @@
 /* Grid auto-fit for very large screens */
 @media (min-width: 1800px) {
   .bento-grid-container {
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   }
 }

@@ -6,7 +6,7 @@ export interface Widget {
   apiUrl: string; // Legacy property for backwards compatibility
   apiEndpointId?: string; // New property to reference API endpoints
   refreshInterval: number; // in seconds
-  displayType: DisplayType;
+  displayType?: DisplayType; // Optional - will be auto-determined based on data
   position: WidgetPosition;
   config: WidgetConfig;
   createdAt: Date;
@@ -82,7 +82,7 @@ export interface ApiResponse {
 export interface CreateWidgetForm {
   name: string;
   apiEndpointId: string;
-  displayType: DisplayType;
+  displayType?: DisplayType; // Optional - will be auto-determined
   refreshInterval: number;
   position?: Partial<WidgetPosition>;
 }

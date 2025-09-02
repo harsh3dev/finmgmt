@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { 
-  DISPLAY_TYPES,
   REFRESH_INTERVALS,
 } from "@/constants/widget-modal";
 import type { CreateWidgetInput } from "@/lib/validation";
@@ -101,33 +100,6 @@ export function WidgetForm({
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="displayType">Display Type</Label>
-          <Select
-            value={widgetData.displayType}
-            onValueChange={(value: "card" | "table" | "chart") => onFieldChange('displayType', value)}
-          >
-            <SelectTrigger className={errors.displayType ? "border-destructive" : ""}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DISPLAY_TYPES.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{option.label}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {option.description}
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.displayType && (
-            <p className="text-sm text-destructive">{errors.displayType}</p>
-          )}
-        </div>
-
-        <div className="grid gap-2">
           <Label htmlFor="refreshInterval">Refresh Interval</Label>
           <Select
             value={widgetData.refreshInterval.toString()}
@@ -148,7 +120,7 @@ export function WidgetForm({
             <p className="text-sm text-destructive">{errors.refreshInterval}</p>
           )}
           <p className="text-sm text-muted-foreground">
-            Minimum 30 seconds to avoid rate limiting
+            Minimum 30 seconds to avoid rate limiting. Display type will be automatically determined based on your data structure.
           </p>
         </div>
 

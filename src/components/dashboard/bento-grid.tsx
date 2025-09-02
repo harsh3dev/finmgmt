@@ -169,7 +169,7 @@ function SortableWidget({
       style={style}
       className={cn(
         "relative group transition-all duration-300 ease-in-out",
-        "min-w-[280px] w-full h-fit", // Height fits content
+        "min-w-[350px] w-full h-fit", // Height fits content
         isDragging && "z-50 opacity-50"
       )}
     >
@@ -562,13 +562,13 @@ export function BentoGrid({
         <SortableContext items={widgetIds} strategy={rectSortingStrategy}>
           <div className={cn(
             "grid gap-4 transition-all duration-300 items-start",
-            // Responsive grid with proper minimum widths
-            "grid-cols-1", // Mobile: 1 column
-            "sm:grid-cols-2", // Small: 2 columns
-            "md:grid-cols-2", // Medium: 2 columns
-            "lg:grid-cols-3", // Large: 3 columns
-            "xl:grid-cols-4", // Extra large: 4 columns
-            "2xl:grid-cols-5", // 2XL: 5 columns
+            // Responsive grid with proper minimum widths for 350px cards
+            "grid-cols-1", // Mobile: 1 column (for screens < 640px)
+            "sm:grid-cols-1", // Small: 1 column (640px-768px, since 2*350px + gaps = ~740px)
+            "md:grid-cols-2", // Medium: 2 columns (768px-1024px, 2*350px + gaps = ~740px fits)
+            "lg:grid-cols-2", // Large: 2 columns (1024px-1280px)
+            "xl:grid-cols-3", // Extra large: 3 columns (1280px-1536px, 3*350px + gaps = ~1100px)
+            "2xl:grid-cols-4", // 2XL: 4 columns (1536px+, 4*350px + gaps = ~1450px)
           )}
           style={{ gridAutoRows: 'min-content' }}>
             {widgets.map(widget => {

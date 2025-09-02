@@ -53,7 +53,7 @@ export const createWidgetSchema = z.object({
     .or(z.literal('new'))
     .or(z.literal('')),
   
-  displayType: z.enum(['card', 'table', 'chart'] as const),
+  displayType: z.enum(['card', 'table', 'chart'] as const).optional(),
   
   refreshInterval: z.number()
     .min(30, 'Refresh interval must be at least 30 seconds')
@@ -92,7 +92,7 @@ export const createWidgetWithoutApiSchema = z.object({
   
   apiEndpointId: z.string().optional(),
   
-  displayType: z.enum(['card', 'table', 'chart'] as const),
+  displayType: z.enum(['card', 'table', 'chart'] as const).optional(),
   
   refreshInterval: z.number()
     .min(30, 'Refresh interval must be at least 30 seconds')
@@ -186,6 +186,5 @@ export const validateFormData = <T>(
 
 export { 
   API_CATEGORIES, 
-  DISPLAY_TYPES, 
   REFRESH_INTERVALS 
 } from '@/constants/widget-modal';

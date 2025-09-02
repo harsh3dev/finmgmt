@@ -255,7 +255,7 @@ export function AddApiModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add API Endpoint</DialogTitle>
           <DialogDescription>

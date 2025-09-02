@@ -5,7 +5,6 @@ export function useWidgetForm() {
   const [widgetData, setWidgetData] = useState<CreateWidgetInput>({
     name: "",
     apiEndpointId: "",
-    displayType: "card",
     refreshInterval: 300,
   });
   
@@ -54,7 +53,6 @@ export function useWidgetForm() {
     setWidgetData({
       name: "",
       apiEndpointId: "",
-      displayType: "card",
       refreshInterval: 300,
     });
     setErrors({});

@@ -118,13 +118,13 @@ function TreeNode({
   };
 
   return (
-    <div className={`${node.depth > 0 ? 'ml-6' : ''}`}>
-      <div className={`p-2 border rounded-lg transition-colors ${
+    <div className={`${node.depth > 0 ? 'ml-4 sm:ml-6' : ''}`}>
+      <div className={`p-2 sm:p-3 border rounded-lg transition-colors ${
         isSelected 
           ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20' 
           : 'border-border/50 bg-background hover:bg-accent/50'
       }`}>
-        <div className="flex items-start gap-2">
+        <div className="flex items-start gap-2 sm:gap-3">
           {/* Expand/Collapse button */}
           {hasChildren && (
             <Button
@@ -132,7 +132,7 @@ function TreeNode({
               variant="ghost"
               size="sm"
               onClick={() => onToggleExpanded(node.path)}
-              className="h-6 w-6 p-0 shrink-0"
+              className="h-5 w-5 sm:h-6 sm:w-6 p-0 shrink-0"
             >
               {node.isExpanded ? 
                 <ChevronDown className="h-3 w-3" /> : 
@@ -154,36 +154,36 @@ function TreeNode({
           
           {/* Field info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-1 sm:gap-2 mb-1 flex-wrap">
               <Label 
                 htmlFor={isSelectable ? `field-${node.path}` : undefined}
                 className={`font-medium text-sm flex items-center gap-1 ${
                   isSelectable ? 'cursor-pointer' : ''
-                }`}
+                } truncate max-w-[200px] sm:max-w-none`}
               >
                 {getFieldIcon()}
-                {node.key}
+                <span className="truncate">{node.key}</span>
                 {node.depth > 0 && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
                     ({node.path})
                   </span>
                 )}
               </Label>
               
-              <Badge variant="secondary" className={`text-xs ${getTypeColor()}`}>
+              <Badge variant="secondary" className={`text-xs shrink-0 ${getTypeColor()}`}>
                 {node.type === 'array_of_objects' ? 'array[obj]' : node.dataType}
                 {node.arrayLength !== undefined && ` (${node.arrayLength})`}
               </Badge>
               
               {node.isFinancialData && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs shrink-0 hidden sm:flex">
                   <BarChart3 className="h-3 w-3 mr-1" />
                   Financial
                 </Badge>
               )}
               
               {node.aggregationOptions.length > 0 && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs shrink-0 hidden sm:flex">
                   <Calculator className="h-3 w-3 mr-1" />
                   Aggregatable
                 </Badge>
@@ -195,7 +195,7 @@ function TreeNode({
                   variant="ghost"
                   size="sm"
                   onClick={() => onPreviewField(node.path)}
-                  className="h-6 w-6 p-0"
+                  className="h-5 w-5 sm:h-6 sm:w-6 p-0 shrink-0"
                 >
                   <Eye className="h-3 w-3" />
                 </Button>
@@ -204,14 +204,14 @@ function TreeNode({
             
             {/* Sample value */}
             {node.sampleValue !== undefined && (
-              <p className="text-xs text-muted-foreground mb-2">
+              <p className="text-xs text-muted-foreground mb-2 truncate">
                 Sample: {formatSimpleValue(node.sampleValue)}
               </p>
             )}
             
-            {/* Aggregation options */}
+            {/* Aggregation options - hide on mobile */}
             {node.aggregationOptions.length > 0 && (
-              <p className="text-xs text-blue-600 dark:text-blue-400 mb-2">
+              <p className="text-xs text-blue-600 dark:text-blue-400 mb-2 hidden sm:block">
                 Aggregation: {node.aggregationOptions.join(', ')}
               </p>
             )}
@@ -227,7 +227,7 @@ function TreeNode({
                   value={displayName}
                   onChange={(e) => onFieldMappingChange(node.path, e.target.value)}
                   placeholder={node.displayLabel}
-                  className="h-8 text-xs"
+                  className="h-7 sm:h-8 text-xs"
                 />
               </div>
             )}
@@ -240,7 +240,7 @@ function TreeNode({
                   <Label className="text-xs font-medium">Array Display Options</Label>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <Label className="text-xs">Display Mode</Label>
                     <Select
@@ -428,21 +428,21 @@ export function TreeFieldSelection({
   };
 
   return (
-    <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-900/10">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Database className="h-4 w-4" />
-          Select Fields to Display
+    <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-900/10  w-fit">
+      <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
+        <CardTitle className="text-sm sm:text-base flex items-center gap-2 flex-wrap">
+          <Database className="h-4 w-4 shrink-0" />
+          <span className="truncate">Select Fields to Display</span>
           {getRecommendationBadge(dataStructure)}
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs sm:text-sm">
           Choose fields from the API response using the hierarchical tree structure below.
           Selected {selectedFields.length} of {selectableFieldsCount} available fields.
         </CardDescription>
         
         {/* Data structure info */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>Data Structure:</span>
+        <div className="flex items-center gap-1 sm:gap-2 text-xs text-muted-foreground flex-wrap">
+          <span className="shrink-0">Data Structure:</span>
           <Badge variant="outline" className="text-xs">
             {dataStructure.type.replace(/_/g, ' ')}
           </Badge>
@@ -452,12 +452,12 @@ export function TreeFieldSelection({
             </Badge>
           )}
           {dataStructure.hasNestedObjects && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs hidden sm:inline-flex">
               Nested (depth: {dataStructure.maxDepth})
             </Badge>
           )}
           {dataStructure.hasFinancialFields && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs hidden sm:inline-flex">
               <BarChart3 className="h-3 w-3 mr-1" />
               Financial Data
             </Badge>
@@ -465,8 +465,8 @@ export function TreeFieldSelection({
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        <div className="max-h-96 overflow-y-auto space-y-2">
+      <CardContent className="space-y-3 p-3 sm:p-6">
+        <div className="max-h-[40vh] sm:max-h-80 overflow-y-auto space-y-2 pr-2">
           {fieldTree.map((node) => (
             <TreeNode
               key={node.path}

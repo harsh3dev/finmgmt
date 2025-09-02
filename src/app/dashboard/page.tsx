@@ -216,7 +216,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b sticky top-0 z-40 backdrop-blur-sm bg-card/95">
-        <div className="container mx-auto px-4 py-4 max-w-[2000px]">
+        <div className="container mx-auto px-4 py-4 max-w-7xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <h1 className="text-xl sm:text-2xl font-bold">Finance Dashboard</h1>
@@ -269,7 +269,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 max-w-[2000px]">
+      <main className="container mx-auto px-4 py-6 max-w-8xl">
         {activeTab === 'widgets' && (
           <div className="space-y-6">
             {apiEndpoints.length === 0 ? (

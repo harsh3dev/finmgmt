@@ -70,7 +70,7 @@ export default function Home() {
           <h3 className="text-lg font-semibold mb-2">Features</h3>
           <ul className="text-sm text-muted-foreground space-y-1">
             <li>• Real-time data updates with configurable refresh intervals</li>
-            <li>• Support for multiple display types: cards, tables, and charts</li>
+            <li>• Intelligent auto-detection of optimal display types (cards, tables, charts)</li>
             <li>• Flexible field mapping and data formatting options</li>
             <li>• Local storage for persistent dashboard configurations</li>
             <li>• Import/export dashboard settings</li>

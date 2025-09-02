@@ -45,7 +45,7 @@ export function SmartWidgetRenderer({ widget, data, onConfigureWidget, compact =
             Detected: {dataStructure.type.replace(/_/g, ' ')}
           </Badge>
           <div className="text-xs text-muted-foreground mb-4">
-            Recommended: {dataStructure.recommendedDisplayType} view
+            Auto-selected display: <strong>{dataStructure.recommendedDisplayType}</strong> view
           </div>
           <button
             onClick={() => onConfigureWidget(widget)}

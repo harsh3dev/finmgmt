@@ -1,4 +1,4 @@
-import type { ApiCategory, DisplayType } from '@/types/widget';
+import type { ApiCategory } from '@/types/widget';
 import { 
   FileText, 
   Hash, 
@@ -20,12 +20,12 @@ export const API_CATEGORIES: { value: ApiCategory; label: string; description?: 
   { value: 'custom', label: 'Custom', description: 'Custom or other financial data' },
 ];
 
-// Common display types for widgets
-export const DISPLAY_TYPES: { value: DisplayType; label: string; description: string }[] = [
-  { value: 'card', label: 'Card', description: 'Simple key-value display with clean layout' },
-  { value: 'table', label: 'Table', description: 'Tabular data display with rows and columns' },
-  { value: 'chart', label: 'Chart', description: 'Visual data representation with graphs' },
-];
+// Common display types for widgets (auto-determined, not for manual selection)
+// export const DISPLAY_TYPES: { value: DisplayType; label: string; description: string }[] = [
+//   { value: 'card', label: 'Card', description: 'Simple key-value display with clean layout' },
+//   { value: 'table', label: 'Table', description: 'Tabular data display with rows and columns' },
+//   { value: 'chart', label: 'Chart', description: 'Visual data representation with graphs' },
+// ];
 
 // Refresh interval presets
 export const REFRESH_INTERVALS = [
