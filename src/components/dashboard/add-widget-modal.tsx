@@ -17,10 +17,24 @@ import { useWidgetForm } from "@/hooks/use-widget-form";
 import { useApiForm } from "@/hooks/use-api-form";
 import { useApiTesting } from "@/hooks/use-api-testing";
 import { useFieldSelection } from "@/hooks/use-field-selection";
+
+// Add array configuration state
+interface ArrayConfigType {
+  displayMode: 'list' | 'table' | 'chart' | 'summary';
+  selectedProperties?: string[];
+  aggregationType?: string;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+interface ArrayConfigState {
+  [fieldPath: string]: ArrayConfigType;
+}
 import { WidgetForm } from "./add-widget-modal/widget-form";
 import { ApiForm } from "./add-widget-modal/api-form";
 import { ApiTesting } from "./add-widget-modal/api-testing";
-import { FieldSelection } from "./add-widget-modal/field-selection";
+import { TreeFieldSelection } from "./add-widget-modal/tree-field-selection";
 import { Button } from "@/components/ui/button";
 
 interface AddWidgetModalProps {
@@ -40,6 +54,7 @@ export function AddWidgetModal({
 }: AddWidgetModalProps) {
   const [currentStep, setCurrentStep] = useState<ModalStep>('widget');
   const [selectedApiEndpoint, setSelectedApiEndpoint] = useState<ApiEndpoint | null>(null);
+  const [arrayConfigs, setArrayConfigs] = useState<ArrayConfigState>({});
   
   const widgetForm = useWidgetForm();
   const apiForm = useApiForm();
@@ -74,6 +89,13 @@ export function AddWidgetModal({
     }
   };
 
+  const handleArrayConfigChange = (field: string, config: ArrayConfigState[string]) => {
+    setArrayConfigs(prev => ({
+      ...prev,
+      [field]: config
+    }));
+  };
+
   const handleFieldSelectionSubmit = () => {
     // Submit widget with selected fields from existing API
     const enhancedWidgetData = {
@@ -82,7 +104,8 @@ export function AddWidgetModal({
         selectedFields: fieldSelection.fieldSelection.selectedFields,
         fieldMappings: fieldSelection.fieldSelection.fieldMappings,
         formatSettings: {},
-        styling: {}
+        styling: {},
+        arrayConfigs: arrayConfigs // Include array configurations
       }
     };
     
@@ -194,13 +217,9 @@ export function AddWidgetModal({
 
               {/* Field Selection Section */}
               {fieldSelection.hasResponseData && apiTesting.isTestSuccessful && (
-                <FieldSelection
-                  responseData={fieldSelection.fieldSelection.responseData}
-                  selectedFields={fieldSelection.fieldSelection.selectedFields}
-                  fieldMappings={fieldSelection.fieldSelection.fieldMappings}
-                  onFieldToggle={fieldSelection.toggleFieldSelection}
-                  onFieldMappingChange={fieldSelection.updateFieldMapping}
-                  onPreviewField={fieldSelection.setPreviewField}
+                <TreeFieldSelection
+                  fieldSelection={fieldSelection}
+                  onArrayConfigChange={handleArrayConfigChange}
                 />
               )}
 

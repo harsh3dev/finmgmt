@@ -1,7 +1,375 @@
-import { FieldMetadata, FieldOption, ProcessedFieldData } from "@/types/field-metadata";
+import { 
+  FieldMetadata, 
+  FieldOption, 
+  ProcessedFieldData, 
+  FieldTreeNode, 
+  DataStructureType, 
+  DataStructureInfo,
+  FieldTreeConfig 
+} from "@/types/field-metadata";
 
 /**
- * Analyze API response data and generate detailed field metadata
+ * Detect the overall structure type of the API response data
+ */
+export function detectDataStructure(data: unknown): DataStructureInfo {
+  if (!data) {
+    return {
+      type: 'single_object',
+      isArray: false,
+      hasNestedObjects: false,
+      maxDepth: 0,
+      hasFinancialFields: false,
+      recommendedDisplayType: 'card'
+    };
+  }
+
+  const analysis = analyzeStructure(data, 0);
+  
+  return {
+    type: analysis.structureType,
+    isArray: Array.isArray(data),
+    arrayLength: Array.isArray(data) ? data.length : undefined,
+    hasNestedObjects: analysis.hasNestedObjects,
+    maxDepth: analysis.maxDepth,
+    hasFinancialFields: analysis.hasFinancialFields,
+    recommendedDisplayType: getRecommendedDisplayType(analysis)
+  };
+}
+
+/**
+ * Build a hierarchical tree structure from API response data
+ */
+export function buildFieldTree(
+  data: unknown, 
+  config: FieldTreeConfig = {
+    maxDepth: 4,
+    includeArrayItems: true,
+    autoExpandArrays: false,
+    showSampleValues: true,
+    groupByDataType: false
+  }
+): FieldTreeNode[] {
+  const rootNodes: FieldTreeNode[] = [];
+  
+  const buildNode = (
+    value: unknown,
+    key: string,
+    path: string,
+    depth: number,
+    parent?: FieldTreeNode
+  ): FieldTreeNode => {
+    if (depth > config.maxDepth) {
+      return createLeafNode(key, path, value, depth, parent);
+    }
+
+    const node: FieldTreeNode = {
+      key,
+      path,
+      type: getFieldType(value),
+      dataType: getDataType(value),
+      sampleValue: config.showSampleValues ? value : undefined,
+      children: [],
+      parent,
+      depth,
+      aggregationOptions: getAggregationOptions(value),
+      isFinancialData: detectFinancialData(path, value),
+      displayLabel: generateDisplayLabel(key, value, path),
+      isExpanded: depth <= 1 || (config.autoExpandArrays && Array.isArray(value))
+    };
+
+    // Handle different value types
+    if (Array.isArray(value)) {
+      node.arrayLength = value.length;
+      
+      if (value.length > 0 && config.includeArrayItems) {
+        const firstItem = value[0];
+        
+        if (typeof firstItem === 'object' && firstItem !== null) {
+          // Array of objects - create child nodes for object properties
+          Object.keys(firstItem as Record<string, unknown>).forEach(objKey => {
+            const objValue = (firstItem as Record<string, unknown>)[objKey];
+            const childPath = `${path}[].${objKey}`;
+            const childNode = buildNode(objValue, objKey, childPath, depth + 1, node);
+            node.children.push(childNode);
+          });
+        } else {
+          // Array of primitives - create a representative child node
+          const childNode = createLeafNode(
+            '[items]', 
+            `${path}[]`, 
+            firstItem, 
+            depth + 1, 
+            node
+          );
+          node.children.push(childNode);
+        }
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      // Regular object - create child nodes for properties
+      Object.keys(value as Record<string, unknown>).forEach(objKey => {
+        const objValue = (value as Record<string, unknown>)[objKey];
+        const childPath = path ? `${path}.${objKey}` : objKey;
+        const childNode = buildNode(objValue, objKey, childPath, depth + 1, node);
+        node.children.push(childNode);
+      });
+    }
+
+    return node;
+  };
+
+  // Start building from root level
+  if (Array.isArray(data)) {
+    if (data.length > 0) {
+      const rootNode = buildNode(data, 'root', '', 0);
+      rootNodes.push(rootNode);
+    }
+  } else if (typeof data === 'object' && data !== null) {
+    Object.keys(data as Record<string, unknown>).forEach(key => {
+      const value = (data as Record<string, unknown>)[key];
+      const node = buildNode(value, key, key, 0);
+      rootNodes.push(node);
+    });
+  } else {
+    // Single primitive value
+    const rootNode = buildNode(data, 'value', 'value', 0);
+    rootNodes.push(rootNode);
+  }
+
+  return rootNodes;
+}
+
+/**
+ * Convert field tree back to flat field metadata for backward compatibility
+ */
+export function flattenFieldTree(tree: FieldTreeNode[]): FieldMetadata[] {
+  const flattened: FieldMetadata[] = [];
+  
+  const traverse = (node: FieldTreeNode) => {
+    if (node.path) {
+      flattened.push({
+        path: node.path,
+        type: node.type,
+        dataType: node.dataType,
+        sampleValue: node.sampleValue,
+        arrayLength: node.arrayLength,
+        aggregationOptions: node.aggregationOptions,
+        isFinancialData: node.isFinancialData,
+        depth: node.depth,
+        parentPath: node.parent?.path,
+        displayLabel: node.displayLabel
+      });
+    }
+    
+    node.children.forEach(traverse);
+  };
+  
+  tree.forEach(traverse);
+  return flattened;
+}
+
+/**
+ * Internal helper to analyze data structure
+ */
+function analyzeStructure(data: unknown, depth: number): {
+  structureType: DataStructureType;
+  hasNestedObjects: boolean;
+  maxDepth: number;
+  hasFinancialFields: boolean;
+} {
+  let hasNestedObjects = false;
+  let maxDepth = depth;
+  let hasFinancialFields = false;
+  let structureType: DataStructureType = 'single_object';
+
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      structureType = 'array_of_primitives';
+    } else {
+      const firstItem = data[0];
+      const itemTypes = data.map(item => typeof item);
+      const uniqueTypes = [...new Set(itemTypes)];
+      
+      if (uniqueTypes.length > 1) {
+        structureType = 'mixed_array';
+      } else if (typeof firstItem === 'object' && firstItem !== null) {
+        structureType = 'array_of_objects';
+        hasNestedObjects = true;
+        
+        // Analyze nested structure
+        const analysis = analyzeStructure(firstItem, depth + 1);
+        hasNestedObjects = hasNestedObjects || analysis.hasNestedObjects;
+        maxDepth = Math.max(maxDepth, analysis.maxDepth);
+        hasFinancialFields = hasFinancialFields || analysis.hasFinancialFields;
+      } else {
+        structureType = 'array_of_primitives';
+      }
+    }
+  } else if (typeof data === 'object' && data !== null) {
+    const obj = data as Record<string, unknown>;
+    const hasNestedObj = Object.values(obj).some(
+      value => typeof value === 'object' && value !== null
+    );
+    
+    if (hasNestedObj) {
+      structureType = 'nested_object';
+      hasNestedObjects = true;
+    } else {
+      structureType = 'single_object';
+    }
+    
+    // Check for financial fields
+    Object.keys(obj).forEach(key => {
+      if (detectFinancialData(key, obj[key])) {
+        hasFinancialFields = true;
+      }
+      
+      // Recursively analyze nested objects
+      if (typeof obj[key] === 'object' && obj[key] !== null) {
+        const analysis = analyzeStructure(obj[key], depth + 1);
+        hasNestedObjects = hasNestedObjects || analysis.hasNestedObjects;
+        maxDepth = Math.max(maxDepth, analysis.maxDepth);
+        hasFinancialFields = hasFinancialFields || analysis.hasFinancialFields;
+      }
+    });
+  }
+
+  return {
+    structureType,
+    hasNestedObjects,
+    maxDepth: Math.max(maxDepth, depth),
+    hasFinancialFields
+  };
+}
+
+/**
+ * Get recommended display type based on data structure
+ */
+function getRecommendedDisplayType(analysis: {
+  structureType: DataStructureType;
+  hasNestedObjects: boolean;
+  hasFinancialFields: boolean;
+}): 'card' | 'table' | 'list' | 'chart' {
+  if (analysis.hasFinancialFields) {
+    return 'chart';
+  }
+  
+  switch (analysis.structureType) {
+    case 'array_of_objects':
+      return 'table';
+    case 'array_of_primitives':
+      return 'list';
+    case 'single_object':
+    case 'nested_object':
+      return 'card';
+    default:
+      return 'card';
+  }
+}
+
+/**
+ * Create a leaf node for the tree
+ */
+function createLeafNode(
+  key: string,
+  path: string,
+  value: unknown,
+  depth: number,
+  parent?: FieldTreeNode
+): FieldTreeNode {
+  return {
+    key,
+    path,
+    type: getFieldType(value),
+    dataType: getDataType(value),
+    sampleValue: value,
+    children: [],
+    parent,
+    depth,
+    aggregationOptions: getAggregationOptions(value),
+    isFinancialData: detectFinancialData(path, value),
+    displayLabel: generateDisplayLabel(key, value, path)
+  };
+}
+
+/**
+ * Get field type based on value
+ */
+function getFieldType(value: unknown): FieldTreeNode['type'] {
+  if (Array.isArray(value)) {
+    if (value.length > 0 && typeof value[0] === 'object' && value[0] !== null) {
+      return 'array_of_objects';
+    }
+    return 'array';
+  }
+  
+  if (typeof value === 'object' && value !== null) {
+    return 'object';
+  }
+  
+  return 'simple';
+}
+
+/**
+ * Get aggregation options based on value type
+ */
+function getAggregationOptions(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    if (value.length === 0) return ['count'];
+    
+    const firstItem = value[0];
+    if (typeof firstItem === 'number') {
+      return ['count', 'avg', 'max', 'min', 'first', 'last'];
+    }
+    return ['count', 'first', 'last'];
+  }
+  
+  if (typeof value === 'number') {
+    return ['avg', 'max', 'min'];
+  }
+  
+  return [];
+}
+
+/**
+ * Generate user-friendly display label with hierarchy
+ */
+function generateDisplayLabel(key: string, value: unknown, path?: string): string {
+  let label = key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, l => l.toUpperCase())
+    .trim();
+  
+  // If this is a nested field (has a path with multiple parts), show hierarchy
+  if (path && path.includes('.')) {
+    const pathParts = path
+      .replace(/\[\]/g, '') // Remove array notation
+      .split('.')
+      .map(part => part
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase())
+        .trim()
+      );
+    
+    // Only show hierarchy if there are multiple meaningful parts
+    if (pathParts.length > 1 && pathParts[0] !== pathParts[pathParts.length - 1]) {
+      label = pathParts.join(' > ');
+    }
+  }
+  
+  if (Array.isArray(value)) {
+    label += ` (${value.length} items)`;
+  } else if (typeof value === 'object' && value !== null) {
+    const objKeys = Object.keys(value as Record<string, unknown>);
+    label += ` (${objKeys.length} properties)`;
+  }
+  
+  return label;
+}
+/**
+ * Legacy function: Analyze API response data and generate detailed field metadata
+ * @deprecated Use buildFieldTree() for new implementations
  */
 export function analyzeApiResponse(data: unknown, maxDepth = 3): FieldMetadata[] {
   const metadata: FieldMetadata[] = [];
@@ -14,7 +382,8 @@ export function analyzeApiResponse(data: unknown, maxDepth = 3): FieldMetadata[]
       sampleValue: value,
       depth,
       parentPath,
-      isFinancialData: detectFinancialData(path, value)
+      isFinancialData: detectFinancialData(path, value),
+      displayLabel: generateLegacyFieldLabel(path, value)
     };
 
     if (value === null || value === undefined) {
@@ -90,7 +459,8 @@ export function analyzeApiResponse(data: unknown, maxDepth = 3): FieldMetadata[]
             parentPath: path,
             arrayLength,
             aggregationOptions,
-            isFinancialData: detectFinancialData(arrayPropPath, propValue)
+            isFinancialData: detectFinancialData(arrayPropPath, propValue),
+            displayLabel: generateLegacyFieldLabel(arrayPropPath, propValue)
           });
         });
         
@@ -143,17 +513,77 @@ export function analyzeApiResponse(data: unknown, maxDepth = 3): FieldMetadata[]
 }
 
 /**
+ * Generate a user-friendly label for legacy field metadata
+ */
+function generateLegacyFieldLabel(path: string, value: unknown): string {
+  let label = path
+    .replace(/\[\]/g, '')
+    .replace(/_/g, ' ')
+    .replace(/([A-Z])/g, ' $1')
+    .trim()
+    .split('.')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' > ');
+    
+  // Add type indicator
+  if (Array.isArray(value)) {
+    label += ` (${value.length || 0} items)`;
+  } else if (typeof value === 'object' && value !== null) {
+    const objKeys = Object.keys(value as Record<string, unknown>);
+    label += ` (${objKeys.length} properties)`;
+  }
+  
+  return label || 'Root';
+}
+
+/**
  * Generate field options from metadata for UI selection
  */
 export function generateFieldOptions(metadata: FieldMetadata[]): FieldOption[] {
   return metadata.map(meta => ({
     value: meta.path,
-    label: generateFieldLabel(meta),
+    label: meta.displayLabel,
     type: meta.type,
     dataType: meta.dataType,
     sampleValue: meta.sampleValue,
     metadata: meta
   }));
+}
+
+/**
+ * Generate field options from field tree
+ */
+export function generateFieldOptionsFromTree(tree: FieldTreeNode[]): FieldOption[] {
+  const options: FieldOption[] = [];
+  
+  const traverse = (node: FieldTreeNode) => {
+    if (node.path && node.type === 'simple') {
+      options.push({
+        value: node.path,
+        label: node.displayLabel,
+        type: node.type,
+        dataType: node.dataType,
+        sampleValue: node.sampleValue,
+        metadata: {
+          path: node.path,
+          type: node.type,
+          dataType: node.dataType,
+          sampleValue: node.sampleValue,
+          arrayLength: node.arrayLength,
+          aggregationOptions: node.aggregationOptions,
+          isFinancialData: node.isFinancialData,
+          depth: node.depth,
+          parentPath: node.parent?.path,
+          displayLabel: node.displayLabel
+        }
+      });
+    }
+    
+    node.children.forEach(traverse);
+  };
+  
+  tree.forEach(traverse);
+  return options;
 }
 
 /**
@@ -340,27 +770,6 @@ function getDataType(value: unknown): FieldMetadata['dataType'] {
 function isDateString(str: string): boolean {
   const date = new Date(str);
   return !isNaN(date.getTime()) && str.length > 8;
-}
-
-/**
- * Generate a user-friendly label for a field
- */
-function generateFieldLabel(metadata: FieldMetadata): string {
-  let label = metadata.path
-    .replace(/\[\]/g, '')
-    .replace(/_/g, ' ')
-    .replace(/([A-Z])/g, ' $1')
-    .trim()
-    .split('.')
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' > ');
-    
-  // Add type indicator
-  if (metadata.type === 'array' || metadata.type === 'array_of_objects') {
-    label += ` (${metadata.arrayLength || 0} items)`;
-  }
-  
-  return label;
 }
 
 /**

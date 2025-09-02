@@ -7,6 +7,7 @@ export { ApiForm } from './api-form';
 export { CurlInput } from './curl-input';
 export { ApiTesting } from './api-testing';
 export { FieldSelection } from './field-selection';
+export { TreeFieldSelection } from './tree-field-selection';
 export { ErrorDisplay } from './error-display';
 
 // Hooks

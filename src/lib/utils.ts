@@ -151,12 +151,21 @@ export function generateDisplayName(fieldName: string): string {
 
 /**
  * Get meaningful fields by filtering out common system fields
+ * Updated to support nested fields from the new tree-based system
  */
-export function getMeaningfulFields(fields: string[], limit = 3): string[] {
+export function getMeaningfulFields(fields: string[], limit = 8): string[] {
   return fields
-    .filter(field => 
-      !field.includes('.') && 
-      !['id', 'timestamp', 'updated_at', 'created_at', '_id', '__v'].includes(field.toLowerCase())
-    )
+    .filter(field => {
+      const fieldLower = field.toLowerCase();
+      // Filter out system fields but allow nested fields
+      const isSystemField = ['_id', '__v', 'updated_at', 'created_at'].some(sys => 
+        fieldLower.includes(sys)
+      );
+      // Also filter out timestamp fields that are not in arrays
+      const isTimestampField = (fieldLower.includes('timestamp') || fieldLower.includes('date') || fieldLower.includes('time')) 
+        && !field.includes('[]'); // Allow array timestamps
+      
+      return !isSystemField && !isTimestampField;
+    })
     .slice(0, limit);
 }

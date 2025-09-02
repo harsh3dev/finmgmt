@@ -279,6 +279,22 @@ export class ApiService {
   }
 
   /**
+   * Force refresh data for a specific endpoint (bypasses cache and request deduplication)
+   */
+  async forceRefresh(endpoint: ApiEndpoint): Promise<ApiResponse> {
+    const cacheKey = `${endpoint.id}-${endpoint.url}`;
+    
+    // Clear cache for this endpoint
+    this.clearCacheForEndpoint(endpoint.id);
+    
+    // Remove from request queue if exists
+    this.requestQueue.delete(cacheKey);
+    
+    // Execute fresh request
+    return this.fetchData(endpoint, { bypassCache: true, timeout: 30000 });
+  }
+
+  /**
    * Clear all cached responses
    */
   clearCache(): void {

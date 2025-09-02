@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Settings, RefreshCw, Clock, Trash2, AlertTriangle } from "lucide-react";
 import { apiService } from "@/lib/api-service";
-import { CurrencyValue } from "./currency-value";
+import { SmartWidgetRenderer } from "./smart-widget-renderer";
 import type { Widget, ApiResponse, ApiEndpoint } from "@/types/widget";
 
 interface WidgetGridProps {
@@ -26,6 +26,7 @@ interface WidgetGridProps {
 export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveWidget }: WidgetGridProps) {
   const [widgetData, setWidgetData] = useState<Record<string, ApiResponse>>({});
   const [refreshTimers, setRefreshTimers] = useState<Record<string, NodeJS.Timeout>>({});
+  const [manualRefreshStates, setManualRefreshStates] = useState<Record<string, boolean>>({});
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean;
     widget: Widget | null;
@@ -35,7 +36,7 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
   });
 
   // Fetch data for a specific widget
-  const fetchWidgetData = async (widget: Widget) => {
+  const fetchWidgetData = async (widget: Widget, options: { bypassCache?: boolean } = {}) => {
     setWidgetData(prev => ({
       ...prev,
       [widget.id]: { ...prev[widget.id], status: 'loading' }
@@ -55,8 +56,11 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
         throw new Error('API endpoint not found for widget');
       }
 
-      // Use the API service to fetch data
-      const response = await apiService.fetchData(endpoint);
+      // Use the API service to fetch data with appropriate options
+      const response = await apiService.fetchData(endpoint, {
+        bypassCache: options.bypassCache,
+        timeout: 30000
+      });
 
       setWidgetData(prev => ({
         ...prev,
@@ -89,12 +93,12 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
     const newTimers: Record<string, NodeJS.Timeout> = {};
     
     widgets.forEach(widget => {
-      // Initial fetch
-      fetchWidgetData(widget);
+      // Initial fetch (with cache)
+      fetchWidgetData(widget, { bypassCache: false });
       
-      // Set up recurring fetch
+      // Set up recurring fetch (with cache)
       const timer = setInterval(() => {
-        fetchWidgetData(widget);
+        fetchWidgetData(widget, { bypassCache: false });
       }, widget.refreshInterval * 1000);
       
       newTimers[widget.id] = timer;
@@ -109,9 +113,58 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [widgets]);
 
-  // Manual refresh
-  const handleManualRefresh = (widget: Widget) => {
-    fetchWidgetData(widget);
+  // Manual refresh with cache bypass
+  const handleManualRefresh = async (widget: Widget) => {
+    // Set manual refresh state
+    setManualRefreshStates(prev => ({ ...prev, [widget.id]: true }));
+    
+    // Set loading state immediately for better UX
+    setWidgetData(prev => ({
+      ...prev,
+      [widget.id]: { ...prev[widget.id], status: 'loading' }
+    }));
+    
+    try {
+      // Find the API endpoint for this widget
+      let endpoint = apiEndpoints.find(api => api.id === widget.apiEndpointId);
+      
+      if (!endpoint) {
+        // Fallback: try to find by URL for backwards compatibility
+        endpoint = apiEndpoints.find(api => api.url === widget.apiUrl);
+      }
+      
+      if (!endpoint) {
+        throw new Error('API endpoint not found for widget');
+      }
+
+      // Use force refresh to bypass cache and request deduplication
+      const response = await apiService.forceRefresh(endpoint);
+
+      setWidgetData(prev => ({
+        ...prev,
+        [widget.id]: {
+          ...response,
+          nextUpdate: response.status === 'success' 
+            ? new Date(Date.now() + widget.refreshInterval * 1000)
+            : undefined
+        }
+      }));
+    } catch (error) {
+      setWidgetData(prev => ({
+        ...prev,
+        [widget.id]: {
+          data: null,
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Manual refresh failed',
+          lastUpdated: new Date()
+        }
+      }));
+    } finally {
+      // Clear manual refresh state after a brief delay to show success
+      setTimeout(() => {
+        setManualRefreshStates(prev => ({ ...prev, [widget.id]: false }));
+      }, 500);
+    }
   };
 
   // Handle widget removal with confirmation
@@ -139,100 +192,7 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
     });
   };
 
-  // Format field value based on widget config
-  const formatValue = (value: unknown, widget: Widget, apiData?: unknown): React.ReactNode => {
-    // Use CurrencyValue component for currency formatting with real conversion
-    if (widget.config.formatSettings.currency) {
-      return <CurrencyValue value={value} widget={widget} apiData={apiData} />;
-    }
-    
-    // Simple formatting for non-currency values
-    if (value === null || value === undefined || value === '') return 'N/A';
-    
-    const { formatSettings } = widget.config;
-    
-    // Handle arrays with enhanced formatting
-    if (Array.isArray(value)) {
-      if (value.length === 0) return 'Empty array';
-      
-      // Show array summary
-      if (value.every(item => typeof item !== 'object')) {
-        // Array of primitives
-        const preview = value.slice(0, 3);
-        const previewText = preview.join(', ');
-        return previewText + (value.length > 3 ? `... (${value.length} total)` : '');
-      } else {
-        // Array of objects - show count and first item preview
-        const firstItem = value[0];
-        if (firstItem && typeof firstItem === 'object') {
-          const keys = Object.keys(firstItem as Record<string, unknown>);
-          const firstKey = keys[0];
-          if (firstKey) {
-            const firstValue = (firstItem as Record<string, unknown>)[firstKey];
-            return (
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">{value.length} items</div>
-                <div>First: {String(firstValue)}</div>
-              </div>
-            );
-          }
-        }
-        return `Array of ${value.length} objects`;
-      }
-    }
-    
-    if (typeof value === 'number') {
-      let formatted = value;
-      
-      // Apply decimal places
-      if (formatSettings.decimalPlaces !== undefined) {
-        formatted = parseFloat(formatted.toFixed(formatSettings.decimalPlaces));
-      }
-      
-      return formatted.toString();
-    }
-    
-    if (typeof value === 'string') {
-      // Try to parse string as number for decimal formatting
-      const numericValue = parseFloat(value);
-      if (!isNaN(numericValue) && formatSettings.decimalPlaces !== undefined) {
-        return numericValue.toFixed(formatSettings.decimalPlaces);
-      }
-      return value;
-    }
-    
-    if (typeof value === 'boolean') {
-      return value ? 'Yes' : 'No';
-    }
-    
-    // For objects, try to extract meaningful values
-    if (typeof value === 'object') {
-      const obj = value as Record<string, unknown>;
-      const keys = Object.keys(obj);
-      
-      if (keys.length === 0) return 'Empty object';
-      
-      // Show first few key-value pairs
-      const pairs = keys.slice(0, 2).map(key => {
-        const val = obj[key];
-        if (typeof val === 'object') {
-          return `${key}: ${Array.isArray(val) ? `Array(${val.length})` : 'Object'}`;
-        }
-        return `${key}: ${val}`;
-      });
-      
-      return pairs.join(', ') + (keys.length > 2 ? '...' : '');
-    }
-    
-    return String(value);
-  };
-
-  // Get field display name
-  const getFieldDisplayName = (fieldName: string, widget: Widget): string => {
-    return widget.config.fieldMappings[fieldName] || fieldName;
-  };
-
-  // Render widget content based on display type
+  // Render widget content using the smart renderer
   const renderWidgetContent = (widget: Widget, data: ApiResponse) => {
     if (data.status === 'loading') {
       return (
@@ -252,195 +212,8 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
       );
     }
 
-    if (!data.data) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          <p>No data available</p>
-        </div>
-      );
-    }
-
-    // If no fields are selected, show raw data preview
-    if (!widget.config || !widget.config.selectedFields || widget.config.selectedFields.length === 0) {
-      return (
-        <div className="space-y-2">
-          <p className="text-muted-foreground text-sm">
-            This widget needs to be configured to select fields
-          </p>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => onConfigureWidget(widget)}
-              className="text-xs"
-            >
-              Configure Widget
-            </Button>
-          </div>
-          <details className="text-xs">
-            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-              Show raw data preview ({Object.keys(data.data || {}).length} fields)
-            </summary>
-            <pre className="mt-2 bg-muted p-2 rounded overflow-hidden max-h-32">
-              {JSON.stringify(data.data, null, 2).slice(0, 500)}...
-            </pre>
-          </details>
-        </div>
-      );
-    }
-
-    // Render based on display type
-    switch (widget.displayType) {
-      case 'card':
-        return (
-          <div className="space-y-3">
-            {widget.config.selectedFields.map(field => {
-              const value = getNestedValue(data.data, field);
-              const formattedValue = formatValue(value, widget, data.data);
-              return (
-                <div key={field} className="flex justify-between items-center">
-                  <span className="font-medium text-sm">
-                    {getFieldDisplayName(field, widget)}:
-                  </span>
-                  <span className="text-sm">
-                    {formattedValue}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        );
-
-      case 'table':
-        // Enhanced table rendering for arrays
-        const hasArrayData = widget.config.selectedFields.some(field => {
-          const value = getNestedValue(data.data, field);
-          return Array.isArray(value);
-        });
-
-        if (hasArrayData) {
-          // If we have array data, create a more sophisticated table
-          const arrayField = widget.config.selectedFields.find(field => {
-            const value = getNestedValue(data.data, field);
-            return Array.isArray(value);
-          });
-          
-          if (arrayField) {
-            const arrayData = getNestedValue(data.data, arrayField) as unknown[];
-            
-            if (Array.isArray(arrayData) && arrayData.length > 0) {
-              const firstItem = arrayData[0];
-              
-              if (typeof firstItem === 'object' && firstItem !== null) {
-                // Table for array of objects
-                const headers = Object.keys(firstItem as Record<string, unknown>);
-                
-                return (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          {headers.slice(0, 4).map(header => (
-                            <th key={header} className="text-left p-2 font-medium">
-                              {header}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {arrayData.slice(0, 10).map((item, index) => {
-                          const obj = item as Record<string, unknown>;
-                          return (
-                            <tr key={index} className="border-b">
-                              {headers.slice(0, 4).map(header => (
-                                <td key={header} className="p-2">
-                                  {formatValue(obj[header], widget, data.data)}
-                                </td>
-                              ))}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    {arrayData.length > 10 && (
-                      <p className="text-xs text-muted-foreground mt-2 text-center">
-                        Showing 10 of {arrayData.length} items
-                      </p>
-                    )}
-                  </div>
-                );
-              }
-            }
-          }
-        }
-
-        // Default table rendering for simple fields
-        return (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Field</th>
-                  <th className="text-left p-2">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {widget.config.selectedFields.map(field => {
-                  const value = getNestedValue(data.data, field);
-                  const formattedValue = formatValue(value, widget, data.data);
-                  return (
-                    <tr key={field} className="border-b">
-                      <td className="p-2 font-medium">
-                        {getFieldDisplayName(field, widget)}
-                      </td>
-                      <td className="p-2">
-                        {formattedValue}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        );
-
-      case 'chart':
-        return (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Chart visualization coming soon</p>
-            <p className="text-sm">Selected fields: {widget.config.selectedFields.join(', ')}</p>
-          </div>
-        );
-
-      default:
-        return <div>Unknown display type</div>;
-    }
-  };
-
-  // Helper function to get nested object value by dot notation
-  const getNestedValue = (obj: unknown, path: string): unknown => {
-    if (!obj || typeof obj !== 'object') return null;
-    
-    return path.split('.').reduce((current: unknown, key: string) => {
-      if (current === null || current === undefined) return null;
-      
-      if (typeof current === 'object') {
-        if (Array.isArray(current)) {
-          // If it's an array, try to get the field from the first item
-          if (current.length > 0) {
-            const firstItem = current[0];
-            if (firstItem && typeof firstItem === 'object') {
-              return (firstItem as Record<string, unknown>)[key];
-            }
-          }
-          return null;
-        } else {
-          // Regular object access
-          return (current as Record<string, unknown>)[key];
-        }
-      }
-      
-      return null;
-    }, obj);
+    // Use the smart widget renderer for all widget content
+    return <SmartWidgetRenderer widget={widget} data={data} onConfigureWidget={onConfigureWidget} />;
   };
 
   if (widgets.length === 0) {
@@ -451,6 +224,8 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {widgets.map(widget => {
         const data = widgetData[widget.id] || { data: null, status: 'loading' };
+        const isManualRefreshing = manualRefreshStates[widget.id] || false;
+        const isRefreshing = data.status === 'loading' || isManualRefreshing;
         
         return (
           <Card key={widget.id} className="relative">
@@ -467,10 +242,11 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
                     size="sm"
                     variant="ghost"
                     onClick={() => handleManualRefresh(widget)}
-                    disabled={data.status === 'loading'}
+                    disabled={isRefreshing}
                     title="Refresh widget data"
+                    className={isManualRefreshing ? "text-blue-600" : ""}
                   >
-                    <RefreshCw className={`h-4 w-4 ${data.status === 'loading' ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                   </Button>
                   <Button
                     size="sm"
@@ -495,6 +271,9 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
                 <div className="flex items-center text-xs text-muted-foreground mt-2">
                   <Clock className="h-3 w-3 mr-1" />
                   Last updated: {data.lastUpdated.toLocaleTimeString()}
+                  {isManualRefreshing && (
+                    <span className="ml-2 text-blue-600 font-medium">Manual refresh...</span>
+                  )}
                 </div>
               )}
             </CardHeader>

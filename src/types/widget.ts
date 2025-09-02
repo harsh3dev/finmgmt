@@ -42,7 +42,7 @@ export interface WidgetStyling {
   shadow?: boolean;
 }
 
-export type DisplayType = 'card' | 'table' | 'chart';
+export type DisplayType = 'card' | 'table' | 'chart' | 'list';
 
 export type ChartType = 'line' | 'bar' | 'pie' | 'area' | 'scatter';
 
