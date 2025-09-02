@@ -91,7 +91,15 @@ export function AddWidgetModal({
   };
 
   const handleTestExistingApi = async () => {
-    if (!selectedApiEndpoint) return;
+    console.log(selectedApiEndpoint);
+    if (!selectedApiEndpoint) {
+      console.warn('No selected API endpoint available for testing');
+      apiTesting.setTestResult({ 
+        success: false, 
+        message: 'No API endpoint selected. Please go back and select an API endpoint.' 
+      });
+      return;
+    }
     
     // If we have cached sample response, use it instead of making a new API call
     if (selectedApiEndpoint.sampleResponse) {
@@ -179,7 +187,7 @@ export function AddWidgetModal({
               {selectedApiEndpoint?.sampleResponse && apiTesting.apiTestResult?.success && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                    ℹ️ Using cached API response from when this endpoint was created. Click &quot;Test API&quot; above to fetch fresh data if needed.
+                    Using cached API response from when this endpoint was created. Click &quot;Test API&quot; above to fetch fresh data if needed.
                   </p>
                 </div>
               )}
@@ -221,6 +229,39 @@ export function AddWidgetModal({
                         : `Create Widget with ${fieldSelection.fieldSelection.selectedFields.length} Field${fieldSelection.fieldSelection.selectedFields.length !== 1 ? 's' : ''}`
                       : 'Create Widget'
                   }
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Error state for field-selection without selected API endpoint */}
+        {currentStep === 'field-selection' && !selectedApiEndpoint && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Configuration Error</DialogTitle>
+              <DialogDescription>
+                Unable to configure fields without a selected API endpoint.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  <strong>Error:</strong> No API endpoint was selected. This shouldn&apos;t happen in normal flow.
+                </p>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-2">
+                  Please go back and select an API endpoint, or create a new one.
+                </p>
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setCurrentStep('widget')}
+                >
+                  Back to Widget Form
                 </Button>
               </div>
             </div>

@@ -22,6 +22,7 @@ import { CurlInput } from "./curl-input";
 import { ApiTesting } from "./api-testing";
 import { FieldSelection } from "./field-selection";
 import { ErrorDisplay } from "./error-display";
+import { apiService } from "@/lib/api-service";
 
 interface ApiFormProps {
   onSubmit: (apiData: CreateApiEndpointInput, selectedFields: string[], fieldMappings: Record<string, string>) => void;
@@ -42,14 +43,18 @@ export function ApiForm({ onSubmit, onBack }: ApiFormProps) {
     // If cURL command is being used and provided, parse it
     if (inputMethod === 'curl' && curlParser.curlCommand.trim()) {
       try {
-        const parsed = JSON.parse(JSON.stringify(await import('@/lib/api-service')))
-          .apiService.parseCurlCommand(curlParser.curlCommand);
+        const parsed = apiService.parseCurlCommand(curlParser.curlCommand);
         apiDataToTest = {
           ...apiDataToTest,
           url: parsed.url || apiDataToTest.url,
           headers: { ...apiDataToTest.headers, ...parsed.headers },
         };
-      } catch {
+      } catch (error) {
+        console.error('Failed to parse cURL command:', error);
+        apiTesting.setTestResult({ 
+          success: false, 
+          message: 'Failed to parse cURL command. Please check the format.' 
+        });
         return;
       }
     }
@@ -94,9 +99,12 @@ export function ApiForm({ onSubmit, onBack }: ApiFormProps) {
     // If cURL command is being used and provided, parse it and update apiData
     if (inputMethod === 'curl' && curlParser.curlCommand.trim()) {
       try {
-        const parsed = JSON.parse(JSON.stringify(await import('@/lib/api-service')))
-          .apiService.parseCurlCommand(curlParser.curlCommand);
+        const parsed = apiService.parseCurlCommand(curlParser.curlCommand);
         if (!parsed.url) {
+          apiTesting.setTestResult({ 
+            success: false, 
+            message: 'No valid URL found in cURL command' 
+          });
           return;
         }
         apiDataToValidate = {
@@ -104,7 +112,12 @@ export function ApiForm({ onSubmit, onBack }: ApiFormProps) {
           url: parsed.url,
           headers: { ...apiDataToValidate.headers, ...parsed.headers },
         };
-      } catch {
+      } catch (error) {
+        console.error('Failed to parse cURL command:', error);
+        apiTesting.setTestResult({ 
+          success: false, 
+          message: 'Failed to parse cURL command. Please check the format.' 
+        });
         return;
       }
     }

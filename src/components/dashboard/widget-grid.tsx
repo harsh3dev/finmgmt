@@ -151,6 +151,36 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
     
     const { formatSettings } = widget.config;
     
+    // Handle arrays with enhanced formatting
+    if (Array.isArray(value)) {
+      if (value.length === 0) return 'Empty array';
+      
+      // Show array summary
+      if (value.every(item => typeof item !== 'object')) {
+        // Array of primitives
+        const preview = value.slice(0, 3);
+        const previewText = preview.join(', ');
+        return previewText + (value.length > 3 ? `... (${value.length} total)` : '');
+      } else {
+        // Array of objects - show count and first item preview
+        const firstItem = value[0];
+        if (firstItem && typeof firstItem === 'object') {
+          const keys = Object.keys(firstItem as Record<string, unknown>);
+          const firstKey = keys[0];
+          if (firstKey) {
+            const firstValue = (firstItem as Record<string, unknown>)[firstKey];
+            return (
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">{value.length} items</div>
+                <div>First: {String(firstValue)}</div>
+              </div>
+            );
+          }
+        }
+        return `Array of ${value.length} objects`;
+      }
+    }
+    
     if (typeof value === 'number') {
       let formatted = value;
       
@@ -175,31 +205,8 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
       return value ? 'Yes' : 'No';
     }
     
-    // For objects or arrays, try to extract meaningful values
+    // For objects, try to extract meaningful values
     if (typeof value === 'object') {
-      if (Array.isArray(value)) {
-        if (value.length === 0) return 'Empty array';
-        
-        // If array contains primitives, show them as comma-separated
-        if (value.every(item => typeof item !== 'object')) {
-          return value.slice(0, 3).join(', ') + (value.length > 3 ? '...' : '');
-        }
-        
-        // If array contains objects, try to show first item's meaningful data
-        const firstItem = value[0];
-        if (firstItem && typeof firstItem === 'object') {
-          const keys = Object.keys(firstItem as Record<string, unknown>);
-          const firstKey = keys[0];
-          if (firstKey) {
-            const firstValue = (firstItem as Record<string, unknown>)[firstKey];
-            return `${firstValue} (${value.length} items)`;
-          }
-        }
-        
-        return `Array (${value.length} items)`;
-      }
-      
-      // For objects, try to show meaningful key-value pairs
       const obj = value as Record<string, unknown>;
       const keys = Object.keys(obj);
       
@@ -304,6 +311,69 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
         );
 
       case 'table':
+        // Enhanced table rendering for arrays
+        const hasArrayData = widget.config.selectedFields.some(field => {
+          const value = getNestedValue(data.data, field);
+          return Array.isArray(value);
+        });
+
+        if (hasArrayData) {
+          // If we have array data, create a more sophisticated table
+          const arrayField = widget.config.selectedFields.find(field => {
+            const value = getNestedValue(data.data, field);
+            return Array.isArray(value);
+          });
+          
+          if (arrayField) {
+            const arrayData = getNestedValue(data.data, arrayField) as unknown[];
+            
+            if (Array.isArray(arrayData) && arrayData.length > 0) {
+              const firstItem = arrayData[0];
+              
+              if (typeof firstItem === 'object' && firstItem !== null) {
+                // Table for array of objects
+                const headers = Object.keys(firstItem as Record<string, unknown>);
+                
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          {headers.slice(0, 4).map(header => (
+                            <th key={header} className="text-left p-2 font-medium">
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {arrayData.slice(0, 10).map((item, index) => {
+                          const obj = item as Record<string, unknown>;
+                          return (
+                            <tr key={index} className="border-b">
+                              {headers.slice(0, 4).map(header => (
+                                <td key={header} className="p-2">
+                                  {formatValue(obj[header], widget, data.data)}
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {arrayData.length > 10 && (
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        Showing 10 of {arrayData.length} items
+                      </p>
+                    )}
+                  </div>
+                );
+              }
+            }
+          }
+        }
+
+        // Default table rendering for simple fields
         return (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
