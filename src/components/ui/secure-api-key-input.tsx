@@ -13,6 +13,8 @@ interface SecureApiKeyInputProps {
   value?: string;
   onChange?: (value: string) => void;
   onSecureKeyChange?: (hasKey: boolean, maskedKey: string) => void;
+  /** Called exactly when a key is successfully stored/updated (raw value before wipe) */
+  onKeyStored?: (rawKey: string) => void;
   storageKey: string;
   className?: string;
   disabled?: boolean;
@@ -28,6 +30,7 @@ export function SecureApiKeyInput({
   value = '',
   onChange,
   onSecureKeyChange,
+  onKeyStored,
   storageKey,
   className,
   disabled = false,
@@ -75,12 +78,14 @@ export function SecureApiKeyInput({
       : await storeApiKey(inputValue.trim());
 
     if (success) {
+    // Provide raw key to parent before wiping local input
+    onKeyStored?.(inputValue.trim());
       setInputValue('');
       setIsEditing(false);
       setShowValue(false);
       onChange?.('');
     }
-  }, [inputValue, isKeySet, updateApiKey, storeApiKey, onChange]);
+  }, [inputValue, isKeySet, updateApiKey, storeApiKey, onChange, onKeyStored]);
 
   // Remove the stored key
   const handleRemoveKey = useCallback(async () => {

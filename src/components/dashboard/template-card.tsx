@@ -177,7 +177,7 @@ export function TemplateCard({
             className="flex-1 group/button"
             size="sm"
           >
-            Use Template
+            Configure & Use
             <ArrowRight className="w-4 h-4 ml-2 group-hover/button:translate-x-1 transition-transform" />
           </Button>
           <Button

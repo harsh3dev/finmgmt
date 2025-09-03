@@ -190,8 +190,33 @@ export class ApiService {
           ...endpoint.headers,
         };
 
-        if (endpoint.apiKey) {
-          headers['Authorization'] = `Bearer ${endpoint.apiKey}`;
+        // Get API key from endpoint or secure storage
+        let apiKey = endpoint.apiKey;
+        if (!apiKey && endpoint.requiresApiKey && endpoint.apiKeyService) {
+          try {
+            const storageKey = `secure-api-key-${endpoint.apiKeyService}`;
+            const stored = localStorage.getItem(storageKey);
+            if (stored) {
+              const { decryptApiKey, isValidEncryptedData } = await import('@/lib/crypto-utils');
+              const encryptedData = JSON.parse(stored);
+              if (isValidEncryptedData(encryptedData)) {
+                apiKey = await decryptApiKey(encryptedData);
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to retrieve API key from secure storage for ${endpoint.apiKeyService}:`, error);
+          }
+        }
+
+        // Add API key to headers based on configuration
+        if (apiKey && endpoint.requiresApiKey) {
+          if (endpoint.apiKeyLocation === 'header') {
+            const headerName = endpoint.apiKeyHeaderName || 'X-Api-Key';
+            headers[headerName] = apiKey;
+          } else {
+            // Default to Bearer token if no specific location specified
+            headers['Authorization'] = `Bearer ${apiKey}`;
+          }
         }
 
         requestConfig = {
@@ -204,7 +229,12 @@ export class ApiService {
       const response = await fetch(url, requestConfig);
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        const errorBody = await response.text();
+        if (errorBody) {
+          errorMessage += ` - ${errorBody}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const contentType = response.headers.get('content-type');

@@ -25,39 +25,42 @@ export async function applyTemplate(
   try {
     const newApiEndpoints: ApiEndpoint[] = template.apiEndpoints.map(api => {
       let updatedUrl = api.url;
-      
-      if (api.url.includes('alphavantage.co') && api.url.endsWith('apikey=')) {
-        const apiKey = process.env.NEXT_PUBLIC_ALPHA_VANTAGE_API_KEY;
-        console.log('Alpha Vantage API Key found:', apiKey ? 'YES' : 'NO');
-        if (apiKey) {
-          updatedUrl = api.url + apiKey;
-          console.log('Updated Alpha Vantage URL:', updatedUrl);
+      let updatedHeaders: Record<string, string> | undefined = api.headers ? { ...api.headers } : undefined;
+  let injectedApiKey: string | undefined;
+
+      if (api.requiresApiKey && api.apiKeyService && config?.userProvidedApiKeys) {
+        const providedKey = config.userProvidedApiKeys[api.apiKeyService];
+        if (providedKey) {
+          if (api.apiKeyLocation === 'query') {
+            // If URL ends with param name + '=' we append key else add param
+            if (api.apiKeyParamName) {
+              const paramPattern = new RegExp(`${api.apiKeyParamName}=?$`, 'i');
+              if (paramPattern.test(updatedUrl)) {
+                updatedUrl = updatedUrl + providedKey;
+              } else {
+                const urlObj = new URL(updatedUrl);
+                urlObj.searchParams.set(api.apiKeyParamName, providedKey);
+                updatedUrl = urlObj.toString();
+              }
+            }
+          } else if (api.apiKeyLocation === 'header') {
+            if (api.apiKeyHeaderName) {
+              updatedHeaders = {
+                ...(updatedHeaders || {}),
+                [api.apiKeyHeaderName]: providedKey
+              };
+              injectedApiKey = providedKey;
+            }
+          }
         }
       }
-      
-      if (api.url.includes('indianapi.in')) {
-        const indianApiKey = process.env.NEXT_PUBLIC_INDIAN_API_KEY;
-        console.log('Indian API Key found:', indianApiKey ? 'YES' : 'NO');
-        if (indianApiKey && (!api.headers || !api.headers['X-Api-Key'])) {
-          console.log('Adding Indian API key to headers');
-          return {
-            ...api,
-            id: uuidv4(),
-            url: updatedUrl,
-            headers: {
-              ...api.headers,
-              'X-Api-Key': indianApiKey
-            },
-            createdAt: new Date(),
-            updatedAt: new Date()
-          };
-        }
-      }
-      
+
       return {
         ...api,
         id: uuidv4(),
         url: updatedUrl,
+  headers: updatedHeaders,
+  ...(api.apiKeyLocation === 'header' && injectedApiKey ? { apiKey: injectedApiKey } : {}),
         createdAt: new Date(),
         updatedAt: new Date()
       };

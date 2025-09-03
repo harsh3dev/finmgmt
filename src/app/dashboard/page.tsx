@@ -22,6 +22,7 @@ import { ImportedContentTab } from "@/components/dashboard/imported-content-tab"
 import { ExportButton } from "@/components/dashboard/export-button";
 import { ImportButton } from "@/components/dashboard/import-button";
 import { TemplateGallery } from "@/components/dashboard/template-gallery";
+import { TemplateApplyModal } from "@/components/dashboard/template-apply-modal";
 import { Plus, Database, AlertTriangle, Sparkles } from "lucide-react";
 import { 
   type CreateWidgetInput, 
@@ -58,6 +59,8 @@ export default function DashboardPage() {
   const [importedContent, setImportedContent] = useState<ImportedContent[]>([]);
   
   const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState(false);
+  const [pendingTemplate, setPendingTemplate] = useState<DashboardTemplate | null>(null);
+  const [isApplyTemplateModalOpen, setIsApplyTemplateModalOpen] = useState(false);
 
   useEffect(() => {
     const savedWidgets = localStorage.getItem('finance-dashboard-widgets');
@@ -338,29 +341,31 @@ export default function DashboardPage() {
   };
 
   const handleSelectTemplate = async (template: DashboardTemplate) => {
+    // Open key collection modal first
     setIsTemplateGalleryOpen(false);
-    
+    setPendingTemplate(template);
+    setIsApplyTemplateModalOpen(true);
+  };
+
+  const handleApplyTemplateWithConfig = async (config: { templateId: string; customName?: string; userProvidedApiKeys?: Record<string,string> }) => {
+    if (!pendingTemplate) return;
+    setIsApplyTemplateModalOpen(false);
     try {
-      const result = await applyTemplate(template);
-      
+      const result = await applyTemplate(pendingTemplate, config);
       if (result.success) {
         setWidgets(prev => [...prev, ...result.widgets]);
         setApiEndpoints(prev => [...prev, ...result.apiEndpoints]);
-        
         const newWidgets = [...widgets, ...result.widgets];
         const newApiEndpoints = [...apiEndpoints, ...result.apiEndpoints];
-        
         localStorage.setItem('finance-dashboard-widgets', JSON.stringify(newWidgets));
         secureStorageService.saveApiEndpoints(newApiEndpoints).catch(error => {
           console.error('Error saving API endpoints:', error);
         });
-        
         setWarningDialog({
           isOpen: true,
-          title: "Template Applied Successfully",
-          message: `${template.name} has been added to your dashboard with ${result.widgets.length} widgets and ${result.apiEndpoints.length} API endpoints.`
+            title: "Template Applied Successfully",
+            message: `${pendingTemplate.name} has been added with ${result.widgets.length} widgets and ${result.apiEndpoints.length} API endpoints.`
         });
-        
       } else {
         setWarningDialog({
           isOpen: true,
@@ -375,6 +380,8 @@ export default function DashboardPage() {
         title: "Template Application Failed",
         message: "An unexpected error occurred while applying the template."
       });
+    } finally {
+      setPendingTemplate(null);
     }
   };
 
@@ -573,6 +580,12 @@ export default function DashboardPage() {
         isOpen={isTemplateGalleryOpen}
         onClose={handleCloseTemplateGallery}
         onSelectTemplate={handleSelectTemplate}
+      />
+      <TemplateApplyModal
+        isOpen={isApplyTemplateModalOpen}
+        template={pendingTemplate}
+        onCancel={() => { setIsApplyTemplateModalOpen(false); setPendingTemplate(null); }}
+        onApply={handleApplyTemplateWithConfig}
       />
     </div>
   );

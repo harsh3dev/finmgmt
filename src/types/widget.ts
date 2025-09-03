@@ -68,6 +68,15 @@ export interface ApiEndpoint {
   importId?: string;
   importSource?: string;
   importDate?: Date;
+  requiresApiKey?: boolean;
+  /** Stable service identifier used for secure storage key & mapping (e.g. 'alpha-vantage') */
+  apiKeyService?: string;
+  /** Where to inject the key: query parameter or header */
+  apiKeyLocation?: 'query' | 'header';
+  /** Query parameter name for API key if location === 'query' */
+  apiKeyParamName?: string;
+  /** Header name for API key if location === 'header' */
+  apiKeyHeaderName?: string;
 }
 
 export interface RateLimit {

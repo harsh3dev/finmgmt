@@ -12,7 +12,8 @@ import {
   CheckCircle,
   BarChart3,
   Info,
-  Settings
+  Settings,
+  Shield
 } from 'lucide-react';
 import { DashboardTemplate, TEMPLATE_CATEGORIES } from '@/types/template';
 
@@ -82,15 +83,32 @@ export function TemplateDetailsModal({
       <div className="space-y-4">
         <h4 className="text-lg font-semibold">Requirements</h4>
         <div className="grid gap-3">
-          <div className="flex items-center gap-3 p-3 border rounded-lg">
-            <CheckCircle className="w-5 h-5 text-green-500" />
-            <div>
-              <div className="font-medium">Ready to Use</div>
-              <div className="text-sm text-muted-foreground">
-                Template comes with pre-configured APIs and data sources
+          {template.apiEndpoints.some(a => a.requiresApiKey) ? (
+            <div className="flex items-start gap-3 p-3 border rounded-lg">
+              <Shield className="w-5 h-5 text-amber-500 mt-0.5" />
+              <div className="space-y-1">
+                <div className="font-medium">API Keys Required</div>
+                <div className="text-sm text-muted-foreground">
+                  You will be prompted to securely enter keys before applying. Keys never leave your browser.
+                </div>
+                <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-1">
+                  {template.apiEndpoints.filter(a => a.requiresApiKey).map(a => (
+                    <li key={a.id}>{a.name}: {a.apiKeyLocation === 'query' ? `Query param (${a.apiKeyParamName})` : `Header (${a.apiKeyHeaderName})`}</li>
+                  ))}
+                </ul>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-3 p-3 border rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-500" />
+              <div>
+                <div className="font-medium">Ready to Use</div>
+                <div className="text-sm text-muted-foreground">
+                  No API keys required for this template
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -230,19 +248,13 @@ export function TemplateDetailsModal({
         ))}
       </div>
 
-      {/* Ready to use notice */}
-      <div className="border-t pt-6">
-        <Card className="border-green-200 bg-green-50/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              <span className="font-medium">Ready to Use</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              This template is ready to be applied immediately with pre-configured APIs and widgets.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="border-t pt-6 space-y-2">
+        <h5 className="font-medium text-sm">Summary</h5>
+        <p className="text-xs text-muted-foreground">
+          {template.apiEndpoints.filter(a => a.requiresApiKey).length > 0 
+            ? 'API key entry will appear next. Keys are encrypted locally.'
+            : 'No additional configuration required.'}
+        </p>
       </div>
     </div>
   );
@@ -291,7 +303,7 @@ export function TemplateDetailsModal({
             Close
           </Button>
           <Button onClick={onUseTemplate} className="group">
-            Use This Template
+            Configure & Use API
             <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
         </div>

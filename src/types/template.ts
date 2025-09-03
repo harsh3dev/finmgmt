@@ -37,6 +37,8 @@ export interface TemplateApplicationResult {
 export interface TemplateSetupConfig {
   templateId: string;
   customName?: string;
+  /** Map of service identifier -> raw API key provided by user at template application time */
+  userProvidedApiKeys?: Record<string, string>;
 }
 
 export interface TemplatePreview {

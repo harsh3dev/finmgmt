@@ -10,8 +10,8 @@ const stockPortfolioTemplate: DashboardTemplate = {
   version: '1.0.0',
   previewImage: '/templates/stock-portfolio-preview.png',
   setupInstructions: [
-    'Alpha Vantage API key is already configured in environment variables',
-    'This template provides 5 requests per minute and 500 requests per day',
+    'Enter your Alpha Vantage API key when applying the template',
+    'Alpha Vantage free tier: 5 requests per minute and 500 per day',
     'You can track multiple stocks by creating additional widgets'
   ],
   apiEndpoints: [
@@ -22,6 +22,10 @@ const stockPortfolioTemplate: DashboardTemplate = {
       headers: {},
       description: 'Real-time stock quotes from Alpha Vantage',
       category: 'stocks',
+      requiresApiKey: true,
+      apiKeyService: 'alpha-vantage',
+      apiKeyLocation: 'query',
+      apiKeyParamName: 'apikey',
       rateLimit: {
         requestsPerMinute: 5,
         requestsPerHour: 300,
@@ -37,6 +41,10 @@ const stockPortfolioTemplate: DashboardTemplate = {
       headers: {},
       description: 'Market indices data from Alpha Vantage',
       category: 'indices',
+  requiresApiKey: true,
+  apiKeyService: 'alpha-vantage',
+  apiKeyLocation: 'query',
+  apiKeyParamName: 'apikey',
       rateLimit: {
         requestsPerMinute: 5,
         requestsPerHour: 300,
@@ -69,7 +77,6 @@ const stockPortfolioTemplate: DashboardTemplate = {
           'Global Quote.10. change percent': 'Change %'
         },
         formatSettings: {
-          currency: 'USD',
           decimalPlaces: 2
         },
         styling: {
@@ -103,7 +110,6 @@ const stockPortfolioTemplate: DashboardTemplate = {
           'Global Quote.10. change percent': 'Change %'
         },
         formatSettings: {
-          currency: 'USD',
           decimalPlaces: 2
         },
         styling: {
@@ -146,8 +152,8 @@ const indianStocksTemplate: DashboardTemplate = {
   version: '1.0.0',
   previewImage: '/templates/indian-stocks-preview.png',
   setupInstructions: [
-    'Indian API key is already configured in environment variables',
-    'This template shows trending stocks in the Indian market',
+    'Enter your Indian Stocks API key when applying the template',
+    'Shows trending stocks in the Indian market',
     'Data includes stock prices, changes, and market trends'
   ],
   apiEndpoints: [
@@ -158,6 +164,10 @@ const indianStocksTemplate: DashboardTemplate = {
       headers: {},
       description: 'Trending stocks data from Indian Stock Market',
       category: 'stocks',
+      requiresApiKey: true,
+      apiKeyService: 'indian-stocks',
+      apiKeyLocation: 'header',
+      apiKeyHeaderName: 'X-Api-Key',
       rateLimit: {
         requestsPerMinute: 60,
         requestsPerHour: 3600,
@@ -213,7 +223,6 @@ const indianStocksTemplate: DashboardTemplate = {
           'trending_stocks.top_gainers.2.percent_change': 'Change % 3'
         },
         formatSettings: {
-          currency: 'INR',
           decimalPlaces: 2
         },
         styling: {

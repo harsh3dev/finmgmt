@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTheme } from 'next-themes';
 import { LineChartComponent } from './line-chart';
 import { BarChartComponent } from './bar-chart';
@@ -20,19 +20,7 @@ interface ChartContainerProps {
   // Future: explicit toggle; current minimal heuristic implementation
 }
 
-function hasVariableNumericData(data: unknown, fields: string[]): boolean {
-  // Extract numeric data for the selected fields
-  const numericData = extractNumericData(data, fields);
-  
-  if (numericData.length < 2) return false;
-  
-  // Check if values are variable (not all the same)
-  const values = numericData.map(item => item.value);
-  const firstValue = values[0];
-  const hasVariation = values.some(value => Math.abs(value - firstValue) > 0.001);
-  
-  return hasVariation;
-}
+// NOTE: Removed separate hasVariableNumericData function to avoid duplicate extraction work.
 
 export function ChartContainer({ 
   widget, 
@@ -43,8 +31,12 @@ export function ChartContainer({
 }: ChartContainerProps) {
   const { theme } = useTheme();
   
-  const selected = widget.config?.selectedFields || [];
-  let numericData = extractNumericData(data, selected);
+  const DEBUG = process.env.NEXT_PUBLIC_DEBUG_CHARTS === 'true';
+
+  const selected = useMemo(() => widget.config?.selectedFields || [], [widget.config?.selectedFields]);
+
+  // Memoize numeric data extraction to prevent re-running on every render cycle unless data/selected change
+  let numericData = useMemo(() => extractNumericData(data, selected), [data, selected]);
 
   // Heuristic: if only one field selected pointing to an array root (array of objects) without explicit child numeric extraction,
   // attempt to expand first up to 25 numeric keys from objects as series (per-item mode)
@@ -92,16 +84,20 @@ export function ChartContainer({
       }
     }
   }
-  
-  console.log('Chart Debug:', {
-    data,
-    selectedFields: widget.config?.selectedFields,
-    numericData,
-    dataType: typeof data,
-    isArray: Array.isArray(data)
-  });
-  
-  // If no numeric data, show error
+  const hasVariation = useMemo(() => {
+    if (numericData.length < 2) return false;
+    const first = numericData[0].value;
+    return numericData.some(d => Math.abs(d.value - first) > 0.001);
+  }, [numericData]);
+
+  if (DEBUG) {
+    console.log('Chart Debug:', { // intentionally kept minimal
+      selectedCount: selected.length,
+      points: numericData.length,
+      hasVariation
+    });
+  }
+
   if (numericData.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -114,15 +110,9 @@ export function ChartContainer({
       </div>
     );
   }
-  
-  // Determine chart type based on your requirements:
-  // If there is variable data of the numeric then show line chart, else bar chart
-  let finalChartType: ChartType = chartType || 'bar'; // Default to bar chart
-  
-  if (!chartType) {
-    const hasVariation = hasVariableNumericData(data, widget.config?.selectedFields || []);
-    finalChartType = hasVariation ? 'line' : 'bar';
-  }
+
+  // Determine chart type (prefer provided prop)
+  const finalChartType: ChartType = chartType || (hasVariation ? 'line' : 'bar');
   
   // Use simple chart data format
   const simpleChartData = numericData.map(item => ({

@@ -176,32 +176,82 @@ export function useSecureApiKey({
 
     const loadInitialState = async () => {
       try {
-        const hasKey = hasStoredKey();
+        const keyName = `secure-api-key-${storageKey}`;
+        const stored = localStorage.getItem(keyName);
         
-        if (hasKey) {
-          const key = await retrieveApiKey();
-          if (key) {
-            updateState({
-              hasKey: true,
-              maskedKey: maskApiKey(key),
-              isLoading: false,
-            });
-            secureWipe();
-          }
-        } else {
-          updateState({
+        if (!stored) {
+          setState(prev => ({
+            ...prev,
             hasKey: false,
             maskedKey: '',
             isLoading: false,
-          });
+          }));
+          return;
+        }
+
+        let encryptedData: EncryptedData;
+        try {
+          encryptedData = JSON.parse(stored);
+        } catch {
+          // Invalid JSON in storage, clear it
+          localStorage.removeItem(keyName);
+          setState(prev => ({
+            ...prev,
+            hasKey: false,
+            maskedKey: '',
+            isLoading: false,
+          }));
+          return;
+        }
+
+        if (!isValidEncryptedData(encryptedData)) {
+          // Invalid encrypted data format, clear it
+          localStorage.removeItem(keyName);
+          setState(prev => ({
+            ...prev,
+            hasKey: false,
+            maskedKey: '',
+            isLoading: false,
+          }));
+          return;
+        }
+
+        try {
+          const key = await decryptApiKey(encryptedData);
+          if (key) {
+            setState(prev => ({
+              ...prev,
+              hasKey: true,
+              maskedKey: maskApiKey(key),
+              isLoading: false,
+            }));
+            secureWipe();
+          } else {
+            setState(prev => ({
+              ...prev,
+              hasKey: false,
+              maskedKey: '',
+              isLoading: false,
+            }));
+          }
+        } catch {
+          setState(prev => ({
+            ...prev,
+            error: 'Failed to decrypt stored API key',
+            isLoading: false,
+          }));
         }
       } catch (error) {
-        handleError(error instanceof Error ? error.message : 'Failed to load initial state');
+        setState(prev => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to load initial state',
+          isLoading: false,
+        }));
       }
     };
 
     loadInitialState();
-  }, [autoLoad, hasStoredKey, retrieveApiKey, handleError, updateState]);
+  }, [autoLoad, storageKey]); // Only depend on stable values
 
   useEffect(() => {
     return () => {
