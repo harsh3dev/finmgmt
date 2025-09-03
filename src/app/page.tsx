@@ -1,7 +1,15 @@
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, BarChart3, Settings, Database } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  Database,
+  LockKeyhole,
+  RefreshCcw,
+  Palette,
+  Grid2x2
+} from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
@@ -14,41 +22,68 @@ export default function Home() {
       
       <main className="row-start-2 flex flex-col gap-8 items-center sm:items-start max-w-4xl">
         <div className="text-center sm:text-left">
-          <h2 className="text-4xl font-bold mb-4">
-            Build Your Custom Financial Dashboard
+          <h2 className="text-4xl font-bold mb-4 tracking-tight">
+            Your Adaptive Finance Intelligence Workspace
           </h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            Connect to financial APIs, create widgets, and visualize your data in real-time.
+          <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+            Connect trusted market data sources, transform JSON responses into meaningful insights, and
+            assemble a living dashboard powered by smart widgets, secure API key handling, and automatic
+            display optimization.
           </p>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 w-full">
           <Card>
             <CardHeader>
-              <BarChart3 className="h-8 w-8 mb-2 text-blue-600" />
-              <CardTitle>Create Widgets</CardTitle>
+              <Grid2x2 className="h-8 w-8 mb-2 text-blue-600" />
+              <CardTitle>Adaptive Widgets</CardTitle>
               <CardDescription>
-                Add custom widgets to display financial data from various APIs
+                Smart auto-detection picks the best view (card / table / chart) from raw JSON
               </CardDescription>
             </CardHeader>
           </Card>
-
           <Card>
             <CardHeader>
               <Database className="h-8 w-8 mb-2 text-green-600" />
-              <CardTitle>Connect APIs</CardTitle>
+              <CardTitle>Multi‑Source APIs</CardTitle>
               <CardDescription>
-                Integrate with Alpha Vantage, Yahoo Finance, and other financial data sources
+                Plug in market & currency data with caching + manual refresh control
               </CardDescription>
             </CardHeader>
           </Card>
-
           <Card>
             <CardHeader>
-              <Settings className="h-8 w-8 mb-2 text-purple-600" />
-              <CardTitle>Configure Display</CardTitle>
+              <BarChart3 className="h-8 w-8 mb-2 text-purple-600" />
+              <CardTitle>Instant Insight</CardTitle>
               <CardDescription>
-                Customize how your data appears with different formats and styles
+                Charts & tables enhanced with search, pagination & numeric parsing
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <LockKeyhole className="h-8 w-8 mb-2 text-amber-600" />
+              <CardTitle>Secure Keys</CardTitle>
+              <CardDescription>
+                AES‑GCM encrypted API keys & masked in UI for safer local usage
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <RefreshCcw className="h-8 w-8 mb-2 text-cyan-600" />
+              <CardTitle>Intelligent Caching</CardTitle>
+              <CardDescription>
+                Avoid redundant calls with smart memoization & force refresh option
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Palette className="h-8 w-8 mb-2 text-pink-600" />
+              <CardTitle>Theme Ready</CardTitle>
+              <CardDescription>
+                Refined dark / light mode & responsive bento grid layout
               </CardDescription>
             </CardHeader>
           </Card>
@@ -61,20 +96,21 @@ export default function Home() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
-          <Button variant="outline" size="lg" className="w-full sm:w-auto">
-            View Documentation
-          </Button>
         </div>
 
         <div className="mt-8 p-6 bg-muted rounded-lg w-full">
-          <h3 className="text-lg font-semibold mb-2">Features</h3>
-          <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Real-time data updates with configurable refresh intervals</li>
-            <li>• Intelligent auto-detection of optimal display types (cards, tables, charts)</li>
-            <li>• Flexible field mapping and data formatting options</li>
-            <li>• Local storage for persistent dashboard configurations</li>
-            <li>• Import/export dashboard settings</li>
-            <li>• Dark and light theme support</li>
+          <h3 className="text-lg font-semibold mb-3">Currently Implemented Capabilities</h3>
+          <ul className="text-sm text-muted-foreground space-y-1 leading-relaxed">
+            <li>• Smart widget type inference (auto card / table / chart selection)</li>
+            <li>• Hierarchical field explorer with nested & array structure awareness</li>
+            <li>• Secure API key encryption (AES‑GCM) & masked UI handling</li>
+            <li>• Real-time currency conversion via secure proxy & formatting utilities</li>
+            <li>• Drag-and-drop responsive bento grid with expansion logic</li>
+            <li>• Search & pagination for data-heavy table widgets</li>
+            <li>• Numeric string parsing + adaptive chart rendering</li>
+            <li>• Manual refresh + intelligent caching layer</li>
+            <li>• Persistent local storage hydration & state restoration</li>
+            <li>• Theme switching (dark / light) + accessible UI foundations</li>
           </ul>
         </div>
       </main>
