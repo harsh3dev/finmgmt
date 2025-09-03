@@ -25,6 +25,7 @@ interface BentoGridProps {
   onConfigureWidget: (widget: Widget) => void;
   onRemoveWidget: (widgetId: string) => void;
   onUpdateWidgetOrder: (widgets: Widget[]) => void;
+  onPromoteImportedWidget?: (widget: Widget) => void;
 }
 
 export function BentoGrid({ 
@@ -32,7 +33,8 @@ export function BentoGrid({
   apiEndpoints, 
   onConfigureWidget, 
   onRemoveWidget, 
-  onUpdateWidgetOrder 
+  onUpdateWidgetOrder,
+  onPromoteImportedWidget
 }: BentoGridProps) {
   const { widgetData, manualRefreshStates, handleManualRefresh } = useWidgetData(widgets, apiEndpoints);
   const {
@@ -106,6 +108,7 @@ export function BentoGrid({
                   onManualRefresh={() => handleManualRefresh(widget)}
                   onConfigureWidget={onConfigureWidget}
                   onRemoveWidget={handleRemoveWidget}
+                  onPromoteWidget={onPromoteImportedWidget}
                   // Pass span classes via wrapperClass prop (added below if not existing)
                   wrapperClassName={spanClass}
                 />

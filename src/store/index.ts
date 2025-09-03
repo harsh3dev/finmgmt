@@ -32,25 +32,25 @@ export const initializeStore = async (): Promise<void> => {
 
   initializationPromise = (async () => {
     try {
-      console.log('🚀 Initializing Redux store from localStorage...');
+
       
       // Import actions directly - simpler approach
       const { initializeFromStorage: initWidgets } = await import('./slices/widgetsSlice');
       const { initializeFromStorage: initApis } = await import('./slices/apiEndpointsSlice');
       const { initializeFromStorage: initNav } = await import('./slices/navigationSlice');
       const { initializeFromStorage: initUI } = await import('./slices/uiSlice');
-      const { loadApiKeys } = await import('./slices/apiKeySlice');
+      const { initializeFromStorage: initApiKeys } = await import('./slices/apiKeySlice');
       
       // Initialize all slices synchronously from localStorage
-      console.log('📦 Dispatching initialization actions...');
+
       store.dispatch(initWidgets());
       store.dispatch(initApis());
       store.dispatch(initNav());
       store.dispatch(initUI());
-      store.dispatch(loadApiKeys());
+      store.dispatch(initApiKeys());
       
       isStoreInitialized = true;
-      console.log('✅ Redux store initialized successfully');
+
     } catch (error) {
       console.error('❌ Error initializing Redux store:', error);
       isStoreInitialized = true; // Mark as initialized even on error to prevent retry loops

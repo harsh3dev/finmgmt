@@ -71,13 +71,20 @@ export async function applyTemplate(
       apiIdMapping[originalApi.id] = newApiEndpoints[index].id;
     });
 
-    const newWidgets: Widget[] = template.widgets.map(widget => ({
-      ...widget,
-      id: uuidv4(),
-      apiEndpointId: apiIdMapping[widget.apiEndpointId!] || widget.apiEndpointId,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
+    const newWidgets: Widget[] = template.widgets.map(widget => {
+      const associatedApiEndpoint = newApiEndpoints.find(api => 
+        apiIdMapping[widget.apiEndpointId!] === api.id
+      );
+      
+      return {
+        ...widget,
+        id: uuidv4(),
+        apiEndpointId: apiIdMapping[widget.apiEndpointId!] || widget.apiEndpointId,
+        apiUrl: associatedApiEndpoint?.url || widget.apiUrl, // Ensure apiUrl is set
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+    });
 
     if (config?.customName) {
       newWidgets.forEach(widget => {

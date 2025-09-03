@@ -12,12 +12,12 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
     // Initialize store with localStorage data asynchronously
     const initStore = async () => {
       try {
-        console.log('StoreInitializer: Starting background initialization...');
+
         if (!isStoreReady()) {
           await initializeStore();
-          console.log('StoreInitializer: Background initialization complete');
+
         } else {
-          console.log('StoreInitializer: Store already initialized');
+
         }
       } catch (error) {
         console.error('StoreInitializer: Error during background initialization:', error);

@@ -25,12 +25,12 @@ export const loadApiEndpoints = createAsyncThunk(
   'apiEndpoints/loadApiEndpoints',
   async () => {
     try {
-      console.log('🔄 APIs: loadApiEndpoints async thunk called');
+
       const endpoints = await dashboardStorage.getApiEndpoints();
-      console.log(`📦 APIs: loadApiEndpoints returned ${endpoints.length} endpoints from dashboardStorage`);
+
       return endpoints;
     } catch (error) {
-      console.error('❌ APIs: Error loading API endpoints:', error);
+      console.error('APIs: Error loading API endpoints:', error);
       throw error;
     }
   }
@@ -149,7 +149,7 @@ const apiEndpointsSlice = createSlice({
     // Initialize from localStorage for immediate loading
     initializeFromStorage: (state) => {
       try {
-        console.log('🔄 APIs: initializeFromStorage called');
+
         const saved = localStorage.getItem('finance-dashboard-apis');
         if (saved) {
           const endpoints = JSON.parse(saved).map((endpoint: ApiEndpoint) => ({
@@ -158,15 +158,15 @@ const apiEndpointsSlice = createSlice({
             createdAt: new Date(endpoint.createdAt),
             updatedAt: new Date(endpoint.updatedAt),
           }));
-          console.log(`✅ APIs: Loaded ${endpoints.length} API endpoints from localStorage`);
+
           state.endpoints = endpoints;
           state.userEndpoints = endpoints.filter((e: ApiEndpoint) => !e.isImported);
           state.importedEndpoints = endpoints.filter((e: ApiEndpoint) => e.isImported);
         } else {
-          console.log('ℹ️ APIs: No data found in localStorage');
+
         }
       } catch (error) {
-        console.error('❌ APIs: Error loading API endpoints from localStorage:', error);
+        console.error('APIs: Error loading API endpoints from localStorage:', error);
       }
     },
   },
@@ -178,7 +178,7 @@ const apiEndpointsSlice = createSlice({
         state.error = null;
       })
       .addCase(loadApiEndpoints.fulfilled, (state, action) => {
-        console.log(`✅ APIs: loadApiEndpoints.fulfilled - setting ${action.payload.length} endpoints in state`);
+
         state.loading = false;
         state.endpoints = action.payload;
         state.userEndpoints = action.payload.filter(e => !e.isImported);

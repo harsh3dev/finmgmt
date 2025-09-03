@@ -176,10 +176,10 @@ export class ApiService {
         
         if (url.includes('{{ALPHA_VANTAGE_API_KEY}}')) {
           const alphaVantageKey = process.env.NEXT_PUBLIC_ALPHA_VANTAGE_API_KEY;
-          console.log('Alpha Vantage API Key found in browser:', alphaVantageKey ? 'YES' : 'NO');
+
           if (alphaVantageKey) {
             url = url.replace('{{ALPHA_VANTAGE_API_KEY}}', alphaVantageKey);
-            console.log('Updated Alpha Vantage URL:', url);
+
           } else {
             console.error('Alpha Vantage API key not found in environment');
           }

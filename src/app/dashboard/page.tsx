@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { ExportButton } from "@/components/dashboard/export-button";
 import { 
   BarChart3, 
   Database, 
@@ -78,11 +79,12 @@ export default function DashboardOverview() {
     }
   ];
 
-  const recentWidgets = userWidgets
+  // Clone before sorting to avoid mutating Redux state arrays (which may be frozen in dev)
+  const recentWidgets = [...userWidgets]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3);
 
-  const recentApiEndpoints = userApiEndpoints
+  const recentApiEndpoints = [...userApiEndpoints]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3);
 
@@ -104,6 +106,12 @@ export default function DashboardOverview() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <ExportButton 
+                widgets={widgets}
+                apiEndpoints={apiEndpoints}
+                variant="outline"
+                size="sm"
+              />
               <Link href="/dashboard/templates">
                 <Button variant="outline" size="sm">
                   <FileText className="h-4 w-4 mr-2" />

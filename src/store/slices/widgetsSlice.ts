@@ -25,9 +25,9 @@ export const loadWidgets = createAsyncThunk(
   'widgets/loadWidgets',
   async () => {
     try {
-      console.log('🔄 Widgets: loadWidgets async thunk called');
+
       const widgets = await dashboardStorage.getWidgets();
-      console.log(`📦 Widgets: loadWidgets returned ${widgets.length} widgets from dashboardStorage`);
+
       return widgets;
     } catch (error) {
       console.error('❌ Widgets: Error loading widgets:', error);
@@ -137,7 +137,7 @@ const widgetsSlice = createSlice({
     // Initialize from localStorage for immediate loading
     initializeFromStorage: (state) => {
       try {
-        console.log('🔄 Widgets: initializeFromStorage called');
+
         const saved = localStorage.getItem('finance-dashboard-widgets');
         if (saved) {
           const widgets = JSON.parse(saved).map((widget: Widget) => ({
@@ -146,12 +146,12 @@ const widgetsSlice = createSlice({
             createdAt: new Date(widget.createdAt),
             updatedAt: new Date(widget.updatedAt),
           }));
-          console.log(`✅ Widgets: Loaded ${widgets.length} widgets from localStorage`);
+
           state.widgets = widgets;
           state.userWidgets = widgets.filter((w: Widget) => !w.isImported);
           state.importedWidgets = widgets.filter((w: Widget) => w.isImported);
         } else {
-          console.log('ℹ️ Widgets: No data found in localStorage');
+
         }
       } catch (error) {
         console.error('❌ Widgets: Error loading widgets from localStorage:', error);
@@ -166,7 +166,7 @@ const widgetsSlice = createSlice({
         state.error = null;
       })
       .addCase(loadWidgets.fulfilled, (state, action) => {
-        console.log(`✅ Widgets: loadWidgets.fulfilled - setting ${action.payload.length} widgets in state`);
+
         state.loading = false;
         state.widgets = action.payload;
         state.userWidgets = action.payload.filter(w => !w.isImported);

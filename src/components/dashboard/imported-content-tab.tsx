@@ -20,6 +20,7 @@ interface ImportedContentTabProps {
   onUpdateWidgetOrder: (widgets: Widget[]) => void
   onBulkExportImportSession?: (importId: string) => void
   onDeleteImportSession?: (importId: string) => void
+  onPromoteImportedWidget?: (widget: Widget) => void
 }
 
 export function ImportedContentTab({
@@ -31,7 +32,8 @@ export function ImportedContentTab({
   onDeleteApi,
   onUpdateWidgetOrder,
   onBulkExportImportSession = () => {},
-  onDeleteImportSession = () => {}
+  onDeleteImportSession = () => {},
+  onPromoteImportedWidget
 }: ImportedContentTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<ImportedSubTab>('widgets')
   const [searchQuery, setSearchQuery] = useState('')
@@ -276,6 +278,7 @@ export function ImportedContentTab({
                   onConfigureWidget={onConfigureWidget}
                   onRemoveWidget={onDeleteWidget}
                   onUpdateWidgetOrder={onUpdateWidgetOrder}
+                  onPromoteImportedWidget={onPromoteImportedWidget}
                 />
               </div>
             ))

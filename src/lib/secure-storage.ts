@@ -66,7 +66,7 @@ class SecureStorageService {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(migratedEndpoints));
       localStorage.setItem(this.MIGRATION_KEY, 'completed');
       
-      console.log(`Migrated ${migratedEndpoints.length} API endpoints with encryption`);
+
     } catch (error) {
       console.error('Failed to migrate API endpoints:', error);
     }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@/hooks/redux';
 import { 
   loadWidgets,
@@ -27,7 +27,6 @@ import {
 } from '@/store/slices/apiEndpointsSlice';
 import { useImportedContent } from '@/hooks/use-dashboard-data';
 import { Widget, ApiEndpoint } from '@/types/widget';
-import { isStoreReady } from '@/store';
 
 /**
  * Redux-based hook for managing widgets with localStorage persistence
@@ -35,6 +34,7 @@ import { isStoreReady } from '@/store';
  */
 export function useReduxWidgets() {
   const dispatch = useAppDispatch();
+  const hasLoadedRef = useRef(false);
   
   // Get state from Redux store
   const widgets = useAppSelector(selectWidgets);
@@ -43,15 +43,13 @@ export function useReduxWidgets() {
   const loading = useAppSelector(selectWidgetsLoading);
   const error = useAppSelector(selectWidgetsError);
 
-  // Only load widgets if store is not already initialized and widgets array is empty
+  // Load widgets only once when component mounts
   useEffect(() => {
-    if (isStoreReady() && widgets.length === 0 && !loading) {
-      console.log('🔄 useReduxWidgets: Store ready but no widgets found, calling loadWidgets...');
+    if (!hasLoadedRef.current && !loading) {
+      hasLoadedRef.current = true;
       dispatch(loadWidgets());
-    } else {
-      console.log(` useReduxWidgets: Skip loadWidgets - storeReady: ${isStoreReady()}, widgets: ${widgets.length}, loading: ${loading}`);
     }
-  }, [dispatch, widgets.length, loading]);
+  }, [dispatch, loading]);
 
   // Wrapped actions that dispatch to Redux and persist to localStorage
   const addWidget = useCallback(async (widget: Widget) => {
@@ -100,7 +98,7 @@ export function useReduxWidgets() {
   }, [dispatch]);
 
   const refresh = useCallback(() => {
-    console.log('Refreshing widgets from storage...');
+
     dispatch(loadWidgets());
   }, [dispatch]);
 
@@ -128,13 +126,15 @@ export function useReduxUserWidgets() {
   const dispatch = useAppDispatch();
   const userWidgets = useAppSelector(selectUserWidgets);
   const loading = useAppSelector(selectWidgetsLoading);
+  const hasLoadedRef = useRef(false);
 
-  // Only load if store is ready and no data exists
+  // Load widgets only once when component mounts
   useEffect(() => {
-    if (isStoreReady() && userWidgets.length === 0 && !loading) {
+    if (!hasLoadedRef.current && !loading) {
+      hasLoadedRef.current = true;
       dispatch(loadWidgets());
     }
-  }, [dispatch, userWidgets.length, loading]);
+  }, [dispatch, loading]);
 
   const refresh = useCallback(() => {
     dispatch(loadWidgets());
@@ -153,6 +153,7 @@ export function useReduxUserWidgets() {
  */
 export function useReduxApiEndpoints() {
   const dispatch = useAppDispatch();
+  const hasLoadedRef = useRef(false);
   
   // Get state from Redux store
   const apiEndpoints = useAppSelector(selectApiEndpoints);
@@ -161,15 +162,14 @@ export function useReduxApiEndpoints() {
   const loading = useAppSelector(selectApiEndpointsLoading);
   const error = useAppSelector(selectApiEndpointsError);
 
-  // Only load API endpoints if store is ready and no data exists
+  // Load API endpoints only once when component mounts
   useEffect(() => {
-    if (isStoreReady() && apiEndpoints.length === 0 && !loading) {
-      console.log('🔄 useReduxApiEndpoints: Store ready but no API endpoints found, calling loadApiEndpoints...');
+    if (!hasLoadedRef.current && !loading) {
+
+      hasLoadedRef.current = true;
       dispatch(loadApiEndpoints());
-    } else {
-      console.log(`ℹ️ useReduxApiEndpoints: Skip loadApiEndpoints - storeReady: ${isStoreReady()}, endpoints: ${apiEndpoints.length}, loading: ${loading}`);
     }
-  }, [dispatch, apiEndpoints.length, loading]);
+  }, [dispatch, loading]);
 
   // Wrapped actions that dispatch to Redux and persist to localStorage
   const addApiEndpoint = useCallback(async (apiEndpoint: ApiEndpoint) => {
@@ -209,7 +209,7 @@ export function useReduxApiEndpoints() {
   }, [dispatch]);
 
   const refresh = useCallback(() => {
-    console.log('Refreshing API endpoints from storage...');
+
     dispatch(loadApiEndpoints());
   }, [dispatch]);
 
@@ -236,13 +236,15 @@ export function useReduxUserApiEndpoints() {
   const dispatch = useAppDispatch();
   const userApiEndpoints = useAppSelector(selectUserApiEndpoints);
   const loading = useAppSelector(selectApiEndpointsLoading);
+  const hasLoadedRef = useRef(false);
 
-  // Only load if store is ready and no data exists
+  // Load API endpoints only once when component mounts
   useEffect(() => {
-    if (isStoreReady() && userApiEndpoints.length === 0 && !loading) {
+    if (!hasLoadedRef.current && !loading) {
+      hasLoadedRef.current = true;
       dispatch(loadApiEndpoints());
     }
-  }, [dispatch, userApiEndpoints.length, loading]);
+  }, [dispatch, loading]);
 
   const refresh = useCallback(() => {
     dispatch(loadApiEndpoints());

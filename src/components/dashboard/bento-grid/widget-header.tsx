@@ -14,6 +14,7 @@ interface WidgetHeaderProps {
   onRefresh: () => void;
   onConfigure: () => void;
   onRemove: () => void;
+  onPromote?: () => void;
   dragHandleProps?: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     attributes: any;
@@ -30,6 +31,7 @@ export function WidgetHeader({
   onRefresh,
   onConfigure,
   onRemove,
+  onPromote,
   dragHandleProps
 }: WidgetHeaderProps) {
   return (
@@ -63,11 +65,13 @@ export function WidgetHeader({
             </CardDescription>
           </div>
           <WidgetActions
+            widget={widget}
             isRefreshing={isRefreshing}
             isManualRefreshing={isManualRefreshing}
             onRefresh={onRefresh}
             onConfigure={onConfigure}
             onRemove={onRemove}
+            onPromote={onPromote}
           />
         </div>
         {data.lastUpdated && (

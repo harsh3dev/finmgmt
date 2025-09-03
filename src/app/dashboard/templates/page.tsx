@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Dialog,
@@ -14,14 +14,17 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { TemplateGalleryPage } from "@/components/dashboard/template-gallery-page";
 import { TemplateApplyModal } from "@/components/dashboard/template-apply-modal";
 import { FileText, AlertTriangle, Sparkles } from "lucide-react";
-import { secureStorageService } from "@/lib/secure-storage";
 import { applyTemplate } from "@/lib/template-manager";
-import type { Widget, ApiEndpoint } from "@/types/widget";
+import { useReduxWidgets, useReduxApiEndpoints } from "@/hooks/use-redux-dashboard";
+import { useAppDispatch } from "@/hooks/redux";
+import { addApiKey, type ApiKey } from "@/store/slices/apiKeySlice";
 import type { DashboardTemplate } from "@/types/template";
+import { toast } from "sonner";
 
 export default function TemplatesPage() {
-  const [widgets, setWidgets] = useState<Widget[]>([]);
-  const [apiEndpoints, setApiEndpoints] = useState<ApiEndpoint[]>([]);
+  const dispatch = useAppDispatch();
+  const { addWidget } = useReduxWidgets();
+  const { addApiEndpoint } = useReduxApiEndpoints();
   const [pendingTemplate, setPendingTemplate] = useState<DashboardTemplate | null>(null);
   const [isApplyTemplateModalOpen, setIsApplyTemplateModalOpen] = useState(false);
   const [warningDialog, setWarningDialog] = useState<{
@@ -33,35 +36,6 @@ export default function TemplatesPage() {
     title: '',
     message: ''
   });
-
-  useEffect(() => {
-    const savedWidgets = localStorage.getItem('finance-dashboard-widgets');
-    const savedApiEndpoints = localStorage.getItem('finance-dashboard-apis');
-    
-    if (savedWidgets) {
-      try {
-        setWidgets(JSON.parse(savedWidgets));
-      } catch (error) {
-        console.error('Error loading widgets:', error);
-      }
-    }
-    
-    if (savedApiEndpoints) {
-      try {
-        setApiEndpoints(JSON.parse(savedApiEndpoints));
-      } catch (error) {
-        console.error('Error loading API endpoints:', error);
-      }
-    } else {
-      secureStorageService.getApiEndpoints().then(secureEndpoints => {
-        if (secureEndpoints.length > 0) {
-          setApiEndpoints(secureEndpoints);
-        }
-      }).catch(error => {
-        console.error('Error loading secure API endpoints:', error);
-      });
-    }
-  }, []);
 
   const handleSelectTemplate = async (template: DashboardTemplate) => {
     // Open key collection modal first
@@ -76,16 +50,48 @@ export default function TemplatesPage() {
     try {
       const result = await applyTemplate(pendingTemplate, config);
       if (result.success) {
-        const newWidgets = [...widgets, ...result.widgets];
-        const newApiEndpoints = [...apiEndpoints, ...result.apiEndpoints];
+
+        // Add all new widgets to Redux store
+        for (const widget of result.widgets) {
+
+          await addWidget(widget);
+        }
         
-        setWidgets(newWidgets);
-        setApiEndpoints(newApiEndpoints);
+        // Add all new API endpoints to Redux store
+        for (const endpoint of result.apiEndpoints) {
+
+          await addApiEndpoint(endpoint);
+        }
         
-        localStorage.setItem('finance-dashboard-widgets', JSON.stringify(newWidgets));
-        secureStorageService.saveApiEndpoints(newApiEndpoints).catch(error => {
-          console.error('Error saving API endpoints:', error);
-        });
+        // Extract and add API keys to Redux store
+        if (config.userProvidedApiKeys) {
+
+          for (const [service, key] of Object.entries(config.userProvidedApiKeys)) {
+            if (key && key.trim()) {
+              const apiKey: ApiKey = {
+                id: crypto.randomUUID(),
+                name: `${service} API Key (from ${pendingTemplate.name})`,
+                service: service,
+                key: key.trim(),
+                description: `API key for ${service} service, added from template: ${pendingTemplate.name}`,
+                isEncrypted: false,
+                createdAt: new Date(),
+                isDefault: true, // Set as default for this service
+              };
+              
+              try {
+
+                await dispatch(addApiKey(apiKey)).unwrap();
+
+              } catch (error) {
+                console.warn(`❌ Failed to add API key for ${service}:`, error);
+              }
+            }
+          }
+        }
+        
+
+        toast.success(`Template "${pendingTemplate.name}" applied successfully! Added ${result.widgets.length} widgets and ${result.apiEndpoints.length} API endpoints.`);
         
         setWarningDialog({
           isOpen: true,
@@ -93,6 +99,7 @@ export default function TemplatesPage() {
           message: `${pendingTemplate.name} has been added with ${result.widgets.length} widgets and ${result.apiEndpoints.length} API endpoints.`
         });
       } else {
+        toast.error(`Failed to apply template: ${result.error || "Unknown error"}`);
         setWarningDialog({
           isOpen: true,
           title: "Template Application Failed",
@@ -101,6 +108,7 @@ export default function TemplatesPage() {
       }
     } catch (error) {
       console.error('Failed to apply template:', error);
+      toast.error("An unexpected error occurred while applying the template.");
       setWarningDialog({
         isOpen: true,
         title: "Template Application Failed",
@@ -122,16 +130,17 @@ export default function TemplatesPage() {
                 <FileText className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-foreground">Templates</h1>
-                <p className="text-sm text-muted-foreground">
-                  Browse and apply dashboard templates to get started quickly
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">Templates</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Browse and apply dashboard templates
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
                 <Sparkles className="h-4 w-4" />
-                Ready-to-use configurations
+                <span className="hidden sm:inline">Ready-to-use configurations</span>
+                <span className="sm:hidden">Ready to use</span>
               </div>
             </div>
           </div>
@@ -139,7 +148,7 @@ export default function TemplatesPage() {
       </div>
 
       {/* Main Content */}
-      <div className="mt-6">
+      <div className="mt-4 sm:mt-6">
         <TemplateGalleryPage onSelectTemplate={handleSelectTemplate} />
       </div>
 

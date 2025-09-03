@@ -16,6 +16,7 @@ interface SortableWidgetProps {
   onManualRefresh: () => void;
   onConfigureWidget: (widget: Widget) => void;
   onRemoveWidget: (widget: Widget) => void;
+  onPromoteWidget?: (widget: Widget) => void;
   wrapperClassName?: string;
 }
 
@@ -29,6 +30,7 @@ export function SortableWidget({
   onManualRefresh,
   onConfigureWidget,
   onRemoveWidget,
+  onPromoteWidget,
   wrapperClassName,
 }: SortableWidgetProps) {
   const isRefreshing = data.status === 'loading' || isManualRefreshing;
@@ -55,6 +57,7 @@ export function SortableWidget({
             onRefresh={() => onManualRefresh()}
             onConfigure={() => onConfigureWidget(widget)}
             onRemove={() => onRemoveWidget(widget)}
+            onPromote={onPromoteWidget ? () => onPromoteWidget(widget) : undefined}
             dragHandleProps={dragHandleProps}
           />
           

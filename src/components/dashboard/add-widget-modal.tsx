@@ -104,7 +104,7 @@ export function AddWidgetModal({
   };
 
   const handleTestExistingApi = async () => {
-    console.log(selectedApiEndpoint);
+
     if (!selectedApiEndpoint) {
       console.warn('No selected API endpoint available for testing');
       apiTesting.setTestResult({ 

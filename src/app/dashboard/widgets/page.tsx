@@ -15,6 +15,7 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { AddWidgetModal } from "@/components/dashboard/add-widget-modal";
 import { ConfigureWidgetModal } from "@/components/dashboard/configure-widget-modal";
 import { BentoGrid } from "@/components/dashboard/bento-grid";
+import { ExportButton } from "@/components/dashboard/export-button";
 import { Plus, Database, AlertTriangle, Grid3X3, Activity, BarChart3, TrendingUp } from "lucide-react";
 import { 
   type CreateWidgetInput, 
@@ -176,6 +177,12 @@ export default function WidgetsPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <ExportButton 
+                widgets={widgets}
+                apiEndpoints={apiEndpoints}
+                variant="outline"
+                size="default"
+              />
               <Button 
                 onClick={() => setIsAddWidgetModalOpen(true)}
                 className="flex items-center gap-2"
@@ -191,7 +198,7 @@ export default function WidgetsPage() {
       {/* Main Content */}
       <div className="mt-6 space-y-6">
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -220,25 +227,6 @@ export default function WidgetsPage() {
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Data sources in use
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Avg Refresh Rate
-              </CardTitle>
-              <Activity className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {widgets.length > 0 
-                  ? Math.round(widgets.reduce((sum, w) => sum + w.refreshInterval, 0) / widgets.length)
-                  : 0}s
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Data update frequency
               </p>
             </CardContent>
           </Card>
@@ -327,6 +315,12 @@ export default function WidgetsPage() {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
+                <ExportButton 
+                  widgets={widgets}
+                  apiEndpoints={apiEndpoints}
+                  variant="outline"
+                  size="sm"
+                />
                 <Button 
                   variant="outline" 
                   size="sm"

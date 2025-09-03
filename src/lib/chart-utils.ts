@@ -7,7 +7,7 @@ export function transformDataForChart(
   data: unknown,
   xField?: string
 ): ChartData[] {
-  console.log('transformDataForChart input:', { data, xField });
+
   
   if (!data) return [];
   
@@ -15,10 +15,10 @@ export function transformDataForChart(
     // Convert single object to array
     if (typeof data === 'object' && data !== null) {
       const result = [data as ChartData];
-      console.log('Converted single object to array:', result);
+
       return result;
     }
-    console.log('Data is not object or array, returning empty');
+
     return [];
   }
 
@@ -39,7 +39,7 @@ export function transformDataForChart(
       return chartItem;
     });
     
-  console.log('Transformed data result:', result);
+
   return result;
 }
 
@@ -53,7 +53,7 @@ export function extractNumericData(data: unknown, fields: string[]): Array<{
 }> {
   const numericData: Array<{ name: string; value: number; field: string }> = [];
   
-  console.log('extractNumericData input:', { data, fields });
+
   
   fields.forEach(field => {
     // Handle array notation like "financials[].fiscalPeriodNumber"
@@ -61,13 +61,13 @@ export function extractNumericData(data: unknown, fields: string[]): Array<{
       const [arrayPath, itemPath] = field.split('[].');
       const arrayValue = getNestedValue(data, arrayPath);
       
-      console.log(`Array field "${field}":`, { arrayPath, itemPath, arrayValue });
+
       
       if (Array.isArray(arrayValue)) {
         arrayValue.forEach((item, index) => {
           if (item && typeof item === 'object') {
             const value = getNestedValue(item, itemPath);
-            console.log(`  Item ${index} value:`, value, typeof value);
+
             
             // Accept numbers OR numeric strings
             if (typeof value === 'number' && !isNaN(value)) {
@@ -92,7 +92,7 @@ export function extractNumericData(data: unknown, fields: string[]): Array<{
     } else {
       // Handle regular nested paths
       const value = getNestedValue(data, field);
-      console.log(`Field "${field}" value:`, value, typeof value);
+
       
       if (typeof value === 'number' && !isNaN(value)) {
         numericData.push({
@@ -160,7 +160,7 @@ export function extractNumericData(data: unknown, fields: string[]): Array<{
     }
   });
   
-  console.log('Extracted numeric data:', numericData);
+
   return numericData;
 }
 
@@ -203,15 +203,15 @@ export function analyzeDataForChart(data: unknown, fields: string[]): ChartAnaly
   const categoricalFields: string[] = [];
   const timeFields: string[] = [];
 
-  console.log('analyzeDataForChart input:', { data, fields });
+
 
   // Analyze each field
   fields.forEach(field => {
     const value = getNestedValue(data, field);
-    console.log(`Field "${field}" extracted value:`, value, typeof value);
+
     
     const fieldType = detectFieldType(value, field);
-    console.log(`Field "${field}" detected type:`, fieldType);
+
     
     switch (fieldType) {
       case 'time':
@@ -231,10 +231,10 @@ export function analyzeDataForChart(data: unknown, fields: string[]): ChartAnaly
 
   // Also try to detect numeric fields directly from data if field paths are failing
   if (numericFields.length === 0 && typeof data === 'object' && data !== null) {
-    console.log('No numeric fields found via paths, trying direct detection...');
+
     
     const directNumericFields = findNumericFieldsDirectly(data, fields);
-    console.log('Direct numeric fields found:', directNumericFields);
+
     
     directNumericFields.forEach((field: string) => {
       if (!numericFields.includes(field)) {

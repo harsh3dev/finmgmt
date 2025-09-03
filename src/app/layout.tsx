@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/components/query-provider";
 import { NavigationProvider } from "@/components/providers/navigation-provider";
 import { ReduxProvider } from "@/components/providers/redux-provider";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Finance Management",
@@ -31,6 +32,7 @@ export default function RootLayout({
               <NavigationProvider>
                 {children}
               </NavigationProvider>
+              <Toaster richColors position="top-right" />
             </ThemeProvider>
           </QueryProvider>
         </ReduxProvider>

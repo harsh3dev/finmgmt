@@ -100,6 +100,26 @@ const apiKeySlice = createSlice({
         apiKey.lastUsed = new Date();
       }
     },
+    // Initialize from localStorage for immediate loading
+    initializeFromStorage: (state) => {
+      try {
+
+        const saved = localStorage.getItem('finance-dashboard-api-keys');
+        if (saved) {
+          const keys = JSON.parse(saved).map((key: ApiKey) => ({
+            ...key,
+            createdAt: new Date(key.createdAt),
+            lastUsed: key.lastUsed ? new Date(key.lastUsed) : undefined,
+          }));
+
+          state.keys = keys;
+        } else {
+
+        }
+      } catch (error) {
+        console.error('❌ API Keys: Error loading API keys from localStorage:', error);
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -133,6 +153,7 @@ const apiKeySlice = createSlice({
       // Add API key
       .addCase(addApiKey.fulfilled, (state, action) => {
         state.keys.push(action.payload);
+        // Auto-save will be handled by persistence middleware
       })
       
       // Update API key
@@ -142,11 +163,13 @@ const apiKeySlice = createSlice({
         if (apiKeyIndex !== -1) {
           state.keys[apiKeyIndex] = { ...state.keys[apiKeyIndex], ...updates };
         }
+        // Auto-save will be handled by persistence middleware
       })
       
       // Delete API key
       .addCase(deleteApiKey.fulfilled, (state, action) => {
         state.keys = state.keys.filter(key => key.id !== action.payload);
+        // Auto-save will be handled by persistence middleware
       })
       
       // Set default API key
@@ -158,6 +181,7 @@ const apiKeySlice = createSlice({
             key.isDefault = key.id === id;
           }
         });
+        // Auto-save will be handled by persistence middleware
       });
   },
 });
@@ -179,5 +203,5 @@ export const selectApiKeyById = (id: string) =>
   (state: { apiKeys: ApiKeyState }) => 
     state.apiKeys.keys.find(key => key.id === id);
 
-export const { clearError, updateLastUsed } = apiKeySlice.actions;
+export const { clearError, updateLastUsed, initializeFromStorage } = apiKeySlice.actions;
 export default apiKeySlice.reducer;

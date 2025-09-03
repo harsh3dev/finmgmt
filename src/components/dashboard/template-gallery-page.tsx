@@ -128,38 +128,42 @@ export function TemplateGalleryPage({ onSelectTemplate }: TemplateGalleryPagePro
     <div className="space-y-6">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Dashboard Templates</h2>
-            <p className="text-muted-foreground">
-              Get started quickly with pre-built templates for different financial use cases
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard Templates</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Get started quickly with pre-built templates
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               variant={viewMode === 'grid' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setViewMode('grid')}
+              className="flex-1 sm:flex-none"
             >
               <Grid className="h-4 w-4" />
+              <span className="ml-1 sm:hidden">Grid</span>
             </Button>
             <Button
               variant={viewMode === 'list' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setViewMode('list')}
+              className="flex-1 sm:flex-none"
             >
               <List className="h-4 w-4" />
+              <span className="ml-1 sm:hidden">List</span>
             </Button>
           </div>
         </div>
 
         {/* Search and Filter Controls */}
         <div className="space-y-4">
-          <div className="flex gap-4 items-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search templates by name, category, or features..."
+                placeholder="Search templates..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-background"
@@ -171,7 +175,7 @@ export function TemplateGalleryPage({ onSelectTemplate }: TemplateGalleryPagePro
                 setSearchQuery('');
                 setSelectedCategory('all');
               }}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 w-full sm:w-auto justify-center"
             >
               <X className="w-4 h-4" />
               Clear
@@ -186,7 +190,7 @@ export function TemplateGalleryPage({ onSelectTemplate }: TemplateGalleryPagePro
                 variant={selectedCategory === category.key ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setSelectedCategory(category.key)}
-                className="h-8"
+                className="h-8 text-xs sm:text-sm"
               >
                 {category.label}
               </Button>
@@ -225,9 +229,9 @@ export function TemplateGalleryPage({ onSelectTemplate }: TemplateGalleryPagePro
                 <h3 className="text-lg font-semibold">Popular Templates</h3>
                 <Badge variant="secondary">Trending</Badge>
               </div>
-              <div className={`grid gap-6 ${
+              <div className={`grid gap-4 sm:gap-6 ${
                 viewMode === 'grid' 
-                  ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
                   : 'grid-cols-1'
               }`}>
                 {popularTemplates.map((template) => {
@@ -267,9 +271,9 @@ export function TemplateGalleryPage({ onSelectTemplate }: TemplateGalleryPagePro
               </div>
             </div>
             
-            <div className={`grid gap-6 ${
+            <div className={`grid gap-4 sm:gap-6 ${
               viewMode === 'grid' 
-                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
+                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
                 : 'grid-cols-1'
             }`}>
               {(selectedCategory === 'all' && !searchQuery ? regularTemplates : filteredTemplates).map((template) => {
@@ -298,30 +302,30 @@ export function TemplateGalleryPage({ onSelectTemplate }: TemplateGalleryPagePro
 
       {/* Gallery Stats */}
       <Card className="bg-muted/50">
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">Template Gallery Stats</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary">{templates.length}</div>
-              <div className="text-muted-foreground">Total Templates</div>
+              <div className="text-xl sm:text-2xl font-bold text-primary">{templates.length}</div>
+              <div className="text-muted-foreground text-xs sm:text-sm">Total Templates</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary">{categories.length - 1}</div>
-              <div className="text-muted-foreground">Categories</div>
+              <div className="text-xl sm:text-2xl font-bold text-primary">{categories.length - 1}</div>
+              <div className="text-muted-foreground text-xs sm:text-sm">Categories</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-xl sm:text-2xl font-bold text-primary">
                 {templates.reduce((acc, t) => acc + t.widgets.length, 0)}
               </div>
-              <div className="text-muted-foreground">Total Widgets</div>
+              <div className="text-muted-foreground text-xs sm:text-sm">Total Widgets</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-xl sm:text-2xl font-bold text-primary">
                 {templates.reduce((acc, t) => acc + t.apiEndpoints.length, 0)}
               </div>
-              <div className="text-muted-foreground">Data Sources</div>
+              <div className="text-muted-foreground text-xs sm:text-sm">Data Sources</div>
             </div>
           </div>
         </CardContent>

@@ -68,11 +68,11 @@ export function TemplateCard({
   const hasDemoData = template.apiEndpoints.length > 0; 
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-200 hover:border-primary/50 relative overflow-hidden bg-card">
+    <Card className="group hover:shadow-lg transition-all duration-200 hover:border-primary/50 relative overflow-hidden bg-card min-h-[400px] flex flex-col">
       {/* Popular badge */}
       {isPopular && (
-        <div className="absolute top-3 right-3 z-10">
-          <Badge className="bg-primary text-primary-foreground">
+        <div className="absolute top-2 right-2 z-10">
+          <Badge className="bg-primary text-primary-foreground text-xs">
             <Users className="w-3 h-3 mr-1" />
             Popular
           </Badge>
@@ -80,9 +80,9 @@ export function TemplateCard({
       )}
 
       {/* Preview image placeholder */}
-      <div className="h-32 bg-gradient-to-br from-primary/10 to-primary/5 relative overflow-hidden">
+      <div className="h-28 sm:h-32 bg-gradient-to-br from-primary/10 to-primary/5 relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-primary/20 text-4xl font-bold">
+          <div className="text-primary/20 text-2xl sm:text-4xl font-bold">
             {template.category.toUpperCase().slice(0, 3)}
           </div>
         </div>
@@ -91,58 +91,58 @@ export function TemplateCard({
           <Button
             variant="secondary"
             size="sm"
-            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-xs"
             onClick={onPreview}
           >
-            <PlayCircle className="w-4 h-4 mr-2" />
-            Preview
+            <PlayCircle className="w-4 h-4 mr-1" />
+            <span className="hidden sm:inline">Preview</span>
           </Button>
         </div>
       </div>
 
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-semibold line-clamp-1 text-card-foreground">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-base sm:text-lg font-semibold line-clamp-1 text-card-foreground">
               {template.name}
             </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground line-clamp-2 mt-1">
+            <CardDescription className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mt-1">
               {template.description}
             </CardDescription>
           </div>
         </div>
 
         {/* Metadata */}
-        <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 sm:gap-3 pt-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {estimatedSetupTime}m setup
+            <span className="text-xs">{estimatedSetupTime}m</span>
           </div>
           {requiresApiKey && (
             <div className="flex items-center gap-1">
               <Key className="w-3 h-3" />
-              API key
+              <span className="hidden sm:inline text-xs">API key</span>
             </div>
           )}
           {hasDemoData && (
             <div className="flex items-center gap-1">
               <Database className="w-3 h-3" />
-              Demo data
+              <span className="hidden sm:inline text-xs">Demo</span>
             </div>
           )}
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 px-3 sm:px-6 pb-3 sm:pb-6 flex-1 flex flex-col">
         {/* Tags and difficulty */}
-        <div className="flex flex-wrap gap-1 mb-4">
+        <div className="flex flex-wrap gap-1 mb-3 sm:mb-4">
           <Badge
             variant="outline"
             className={`text-xs ${getDifficultyColor(difficulty)}`}
           >
             {difficulty}
           </Badge>
-          {tags.slice(0, 3).map((tag) => (
+          {tags.slice(0, 2).map((tag) => (
             <Badge
               key={tag}
               variant="secondary"
@@ -151,15 +151,15 @@ export function TemplateCard({
               {tag.replace('-', ' ')}
             </Badge>
           ))}
-          {tags.length > 3 && (
+          {tags.length > 2 && (
             <Badge variant="outline" className="text-xs">
-              +{tags.length - 3}
+              +{tags.length - 2}
             </Badge>
           )}
         </div>
 
         {/* Template stats */}
-        <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4 text-xs sm:text-sm flex-1">
           <div>
             <div className="text-muted-foreground">Widgets</div>
             <div className="font-medium text-foreground">{template.widgets.length}</div>
@@ -171,22 +171,24 @@ export function TemplateCard({
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 mt-auto">
           <Button
             onClick={onUseTemplate}
-            className="flex-1 group/button"
+            className="flex-1 group/button text-xs sm:text-sm"
             size="sm"
           >
-            Configure & Use
-            <ArrowRight className="w-4 h-4 ml-2 group-hover/button:translate-x-1 transition-transform" />
+            <span className="sm:hidden">Use</span>
+            <span className="hidden sm:inline">Configure & Use</span>
+            <ArrowRight className="w-4 h-4 ml-1 sm:ml-2 group-hover/button:translate-x-1 transition-transform" />
           </Button>
           <Button
             variant="outline"
             onClick={onPreview}
             size="sm"
-            className="px-3"
+            className="px-3 text-xs sm:text-sm sm:w-auto"
           >
             <PlayCircle className="w-4 h-4" />
+            <span className="ml-1 sm:hidden">Preview</span>
           </Button>
         </div>
       </CardContent>
