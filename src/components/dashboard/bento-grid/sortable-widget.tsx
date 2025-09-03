@@ -16,6 +16,7 @@ interface SortableWidgetProps {
   onManualRefresh: () => void;
   onConfigureWidget: (widget: Widget) => void;
   onRemoveWidget: (widget: Widget) => void;
+  wrapperClassName?: string;
 }
 
 export function SortableWidget({
@@ -28,13 +29,14 @@ export function SortableWidget({
   onManualRefresh,
   onConfigureWidget,
   onRemoveWidget,
+  wrapperClassName,
 }: SortableWidgetProps) {
   const isRefreshing = data.status === 'loading' || isManualRefreshing;
 
   return (
     <SortableWrapper
       id={widget.id}
-      className="min-w-[350px] w-full h-fit"
+      className={cn("min-w-[350px] w-full h-fit", wrapperClassName)}
     >
       {({ dragHandleProps, isDragging }) => (
         <Card className={cn(

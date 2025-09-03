@@ -147,10 +147,10 @@ export function AddWidgetModal({
   };
 
   return (
-    <div className="grid place-items-center max-w-8xl mx-auto">
+    <div className="grid place-items-center sm:max-w-3xl max-w-lg mx-auto">
       <Dialog open={isOpen} onOpenChange={handleClose}>
           {currentStep === 'widget' && (
-            <DialogContent className="max-w-8xl w-full max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Widget</DialogTitle>
                 <DialogDescription>
@@ -169,7 +169,7 @@ export function AddWidgetModal({
             </DialogContent>
           )}
           {currentStep === 'field-selection' && selectedApiEndpoint && (
-            <DialogContent className="max-w-8xl w-full max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
               <DialogHeader className="w-fit">
                 <DialogTitle>Configure Fields for {widgetForm.widgetData.name}</DialogTitle>
                 <DialogDescription>
@@ -224,7 +224,7 @@ export function AddWidgetModal({
           )}
           {/* Error state for field-selection without selected API endpoint */}
           {currentStep === 'field-selection' && !selectedApiEndpoint && (
-            <DialogContent className="max-w-8xl w-full max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Configuration Error</DialogTitle>
                 <DialogDescription>
@@ -255,7 +255,7 @@ export function AddWidgetModal({
             </DialogContent>
           )}
           {currentStep === 'api' && (
-            <DialogContent className="max-w-8xl w-full max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add API Endpoint</DialogTitle>
                 <DialogDescription>

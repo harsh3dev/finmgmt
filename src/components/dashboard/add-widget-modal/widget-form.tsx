@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Plus, Table, BarChart3, CreditCard } from "lucide-react";
 import { 
   REFRESH_INTERVALS,
 } from "@/constants/widget-modal";
@@ -47,6 +47,50 @@ export function WidgetForm({
           />
           {errors.name && (
             <p className="text-sm text-destructive">{errors.name}</p>
+          )}
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="displayType">Widget Type</Label>
+          <Select
+            value={widgetData.displayType}
+            onValueChange={(value) => onFieldChange('displayType', value as 'card' | 'table' | 'chart')}
+          >
+            <SelectTrigger className={errors.displayType ? "border-destructive" : ""}>
+              <SelectValue placeholder="Select widget type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="card">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">Card</span>
+                    <span className="text-sm text-muted-foreground">Show data in block format</span>
+                  </div>
+                </div>
+              </SelectItem>
+              <SelectItem value="table">
+                <div className="flex items-center gap-2">
+                  <Table className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">Table</span>
+                    <span className="text-sm text-muted-foreground">Show array data in paginated table</span>
+                  </div>
+                </div>
+              </SelectItem>
+              <SelectItem value="chart">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">Chart</span>
+                    <span className="text-sm text-muted-foreground">Show numeric data as charts</span>
+                  </div>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {errors.displayType && (
+            <p className="text-sm text-destructive">{errors.displayType}</p>
           )}
         </div>
 
@@ -133,7 +177,7 @@ export function WidgetForm({
         </Button>
         <Button 
           type="submit"
-          disabled={!widgetData.name || !widgetData.apiEndpointId}
+          disabled={!widgetData.name || !widgetData.apiEndpointId || !widgetData.displayType}
         >
           {widgetData.apiEndpointId === 'new' 
             ? 'Next: Configure API' 

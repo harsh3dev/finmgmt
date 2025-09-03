@@ -6,7 +6,7 @@ export interface Widget {
   apiUrl: string; // Legacy property for backwards compatibility
   apiEndpointId?: string; // New property to reference API endpoints
   refreshInterval: number; // in seconds
-  displayType?: DisplayType; // Optional - will be auto-determined based on data
+  displayType: DisplayType; // Required - user must choose the widget type
   position: WidgetPosition;
   config: WidgetConfig;
   createdAt: Date;
@@ -47,7 +47,7 @@ export interface WidgetStyling {
   shadow?: boolean;
 }
 
-export type DisplayType = 'card' | 'table' | 'chart' | 'list';
+export type DisplayType = 'card' | 'table' | 'chart';
 
 export type ChartType = 'line' | 'bar' | 'pie' | 'area' | 'scatter';
 

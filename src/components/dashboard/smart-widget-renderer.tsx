@@ -1,15 +1,14 @@
 "use client";
 
-import React from "react";
-import { Badge } from "@/components/ui/badge";
-import { detectDataStructure } from "@/lib/field-analyzer";
+import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { detectDataStructure } from '@/lib/field-analyzer';
 import { 
   renderCardView, 
   renderTableView, 
-  renderListView, 
   renderChartView 
-} from "@/lib/widget-renderer-helpers";
-import type { Widget, ApiResponse } from "@/types/widget";
+} from '@/lib/widget-renderer-helpers';
+import type { Widget, ApiResponse } from '@/types/widget';
 
 interface SmartWidgetRendererProps {
   widget: Widget;
@@ -27,14 +26,10 @@ export function SmartWidgetRenderer({ widget, data, onConfigureWidget, compact =
     );
   }
 
-  // Detect data structure
-  const dataStructure = detectDataStructure(data.data);
-  
-  // Auto-determine best display type if not configured
-  const displayType = widget.displayType || dataStructure.recommendedDisplayType;
-  
   // If no fields are selected, show configuration prompt
   if (!widget.config?.selectedFields || widget.config.selectedFields.length === 0) {
+    const dataStructure = detectDataStructure(data.data);
+    
     return (
       <div className="space-y-4">
         <div className="text-center py-4">
@@ -45,7 +40,7 @@ export function SmartWidgetRenderer({ widget, data, onConfigureWidget, compact =
             Detected: {dataStructure.type.replace(/_/g, ' ')}
           </Badge>
           <div className="text-xs text-muted-foreground mb-4">
-            Auto-selected display: <strong>{dataStructure.recommendedDisplayType}</strong> view
+            Widget type: {widget.displayType} view
           </div>
           <button
             onClick={() => onConfigureWidget(widget)}
@@ -57,29 +52,32 @@ export function SmartWidgetRenderer({ widget, data, onConfigureWidget, compact =
         
         {/* Show data preview */}
         <details className="text-xs">
-          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+          <summary className="cursor-pointer text-muted-foreground mb-2">
             Preview data structure
           </summary>
-          <pre className="mt-2 bg-muted p-2 rounded overflow-auto max-h-32 text-xs">
-            {JSON.stringify(data.data, null, 2).slice(0, 500)}...
+          <pre className="bg-muted p-2 rounded text-xs overflow-auto max-h-32">
+            {JSON.stringify(data.data, null, 2)}
           </pre>
         </details>
       </div>
     );
   }
 
-  // Render based on display type
-  switch (displayType) {
+  // Render based on the user-selected display type
+  switch (widget.displayType) {
+    case 'card':
+      // Card: Show simple data like block wise show the data normally whatever user selected
+      return renderCardView(widget, data.data, compact);
+    
     case 'table':
+      // Table: Show array of data in a paginated table with search
       return renderTableView(widget, data.data, compact);
     
-    case 'list':
-      return renderListView(widget, data.data, compact);
-    
     case 'chart':
+      // Chart: Show all the numeric data
+      // If there is variable data of the numeric then show line chart, else bar chart
       return renderChartView(widget, data.data, compact);
     
-    case 'card':
     default:
       return renderCardView(widget, data.data, compact);
   }

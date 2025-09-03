@@ -1,5 +1,7 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
+import { ChartContainer } from "@/components/ui/charts";
+import { DataTable } from "@/components/ui/data-table";
 import { 
   Calendar,
   CheckCircle, 
@@ -346,8 +348,144 @@ export const renderTableView = (
   data: unknown,
   compact = false
 ): React.ReactNode => {
+  const selectedFields = widget.config?.selectedFields || [];
+
+  const headerLabel = (field: string): string => {
+    // Remove array markers and take last meaningful segment
+    const cleaned = field.replace(/\[\]/g, '');
+    const parts = cleaned.split('.')
+      .filter(p => p && p !== 'root');
+    return (widget.config.fieldMappings[field] || parts[parts.length - 1] || field)
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase())
+      .trim();
+  };
+
+  const normalizePathForLookup = (path: string): string => path.replace(/\[\]/g, '');
+
+  // If user has explicitly selected fields, build a table from those fields regardless of raw shape
+  if (selectedFields.length > 0) {
+    const buildSingleRow = (): Record<string, unknown> => {
+      const row: Record<string, unknown> = {};
+      selectedFields.forEach(field => {
+        const normalized = normalizePathForLookup(field);
+        row[field] = getNestedValue(data, normalized);
+      });
+      return row;
+    };
+
+    // Detect if selected fields all point into (the same) array within an object response
+    if (!Array.isArray(data) && selectedFields.every(f => f.includes('[].'))) {
+      const groups: Record<string, string[]> = {};
+      selectedFields.forEach(f => {
+        const base = f.split('[].')[0];
+        groups[base] = groups[base] || [];
+        groups[base].push(f);
+      });
+      // Pick the largest group (most fields referencing same array)
+      const basePath = Object.keys(groups).sort((a,b) => groups[b].length - groups[a].length)[0];
+      const arrayValue = getNestedValue(data, normalizePathForLookup(basePath));
+      if (Array.isArray(arrayValue) && arrayValue.length > 0) {
+        const fieldsInGroup = groups[basePath];
+        const rows = arrayValue.map(item => {
+          const row: Record<string, unknown> = {};
+            fieldsInGroup.forEach(f => {
+              const relative = f.split('[].').slice(1).join('[].');
+              const relPath = normalizePathForLookup(relative);
+              row[f] = getNestedValue(item, relPath);
+            });
+          return row;
+        });
+        const columns = fieldsInGroup.map(field => ({
+          key: field,
+          header: headerLabel(field),
+          sortable: true
+        }));
+        return (
+          <DataTable
+            data={rows}
+            columns={columns}
+            searchable={!compact}
+            sortable={true}
+            paginated={!compact}
+            pageSize={compact ? 5 : 10}
+            exportable={!compact && rows.length > 0}
+            compact={compact}
+          />
+        );
+      }
+    }
+
+    // Case A: data is an array & all selected fields reference array items via '[].'
+  if (Array.isArray(data) && data.length > 0 && selectedFields.every(f => f.includes('[].'))) {
+      // Derive per-element rows by stripping the prefix up to and including the first '[].'
+      const rows = (data as unknown[]).map(item => {
+        const row: Record<string, unknown> = {};
+        selectedFields.forEach(field => {
+          const relative = field.split('[].').slice(1).join('[].'); // support nested multiple '[].'
+      const relPath = normalizePathForLookup(relative || field);
+      row[field] = getNestedValue(item, relPath);
+        });
+        return row;
+      });
+
+      // Provide custom columns so headers are user friendly
+      const columns = selectedFields.map(field => ({
+        key: field,
+        header: headerLabel(field),
+        sortable: true
+      }));
+
+      return (
+        <DataTable
+          data={rows}
+          columns={columns}
+          searchable={!compact}
+          sortable={true}
+          paginated={!compact}
+          pageSize={compact ? 5 : 10}
+          exportable={!compact && rows.length > 0}
+          compact={compact}
+        />
+      );
+    }
+
+    // Case B: Show a single synthetic row with selected field values (works for any structure)
+    const singleRow = buildSingleRow();
+    const dataRows = [singleRow];
+    const columns = selectedFields.map(field => ({
+      key: field,
+      header: headerLabel(field),
+      sortable: true
+    }));
+
+    return (
+      <div className="space-y-2">
+        <div className="text-xs text-muted-foreground">
+          Showing selected fields as a single row (no iterable array detected). Select an array field (with [] markers) for multi-row tables.
+        </div>
+        <DataTable
+          data={dataRows}
+          columns={columns}
+          searchable={false}
+          sortable={true}
+          paginated={false}
+          pageSize={1}
+          exportable={false}
+          compact={compact}
+        />
+      </div>
+    );
+  }
+
+  // Legacy path: no selected fields -> behave as before (only works if raw data is an array)
   if (!Array.isArray(data)) {
-    return renderCardView(widget, data, compact);
+    return (
+      <div className="text-center py-6 text-muted-foreground text-sm">
+        <p>Select fields to visualize this data as a table.</p>
+      </div>
+    );
   }
 
   if (data.length === 0) {
@@ -358,65 +496,16 @@ export const renderTableView = (
     );
   }
 
-  const firstItem = data[0];
-  if (typeof firstItem !== 'object' || firstItem === null) {
-    return renderListView(widget, data, compact);
-  }
-
-  const headers = Object.keys(firstItem as Record<string, unknown>);
-  const displayHeaders = headers.slice(0, compact ? 4 : 6);
-  const maxRows = compact ? 4 : 10;
-
   return (
-    <div className={compact ? "space-y-2" : "space-y-3"}>
-      <div className="flex items-center justify-between">
-        <Badge variant="outline" className="text-xs">
-          Table View • {data.length} rows
-        </Badge>
-        {data.length > maxRows && (
-          <span className="text-xs text-muted-foreground">
-            Showing {maxRows} of {data.length} rows
-          </span>
-        )}
-      </div>
-      
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              {displayHeaders.map(header => (
-                <th key={header} className={`text-left p-2 font-medium tracking-wide ${compact ? "text-xs px-1" : "text-xs uppercase px-2"}`}>
-                  {header.replace(/_/g, ' ')}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.slice(0, maxRows).map((item, index) => {
-              const obj = item as Record<string, unknown>;
-              return (
-                <tr key={index} className="border-b border-border/50 hover:bg-accent/50">
-                  {displayHeaders.map(header => (
-                    <td key={header} className={`${compact ? "p-1 max-w-16" : "p-2 max-w-20"}`}>
-                      <div className="truncate text-xs">
-                        {formatSmartValue(obj[header])}
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {compact && (headers.length > 4 || data.length > maxRows) && (
-        <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border/20">
-          {headers.length > 4 && `+${headers.length - 4} more columns`}
-          {headers.length > 4 && data.length > maxRows && " • "}
-          {data.length > maxRows && `+${data.length - maxRows} more rows`}
-        </div>
-      )}
-    </div>
+    <DataTable
+      data={data}
+  searchable={!compact}
+      sortable={true}
+  paginated={!compact}
+      pageSize={compact ? 5 : 10}
+      exportable={!compact && data.length > 0}
+      compact={compact}
+    />
   );
 };
 
@@ -425,53 +514,8 @@ export const renderListView = (
   data: unknown,
   compact = false
 ): React.ReactNode => {
-  if (!Array.isArray(data)) {
-    return renderCardView(widget, data, compact);
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p>No items available</p>
-      </div>
-    );
-  }
-
-  const maxItems = compact ? 4 : 12;
-  const itemType = typeof data[0];
-  
-  return (
-    <div className={compact ? "space-y-2" : "space-y-3"}>
-      <div className="flex items-center justify-between">
-        <Badge variant="outline" className="text-xs">
-          List View • {data.length} items ({itemType})
-        </Badge>
-        {data.length > maxItems && (
-          <span className="text-xs text-muted-foreground">
-            Showing {maxItems} of {data.length} items
-          </span>
-        )}
-      </div>
-      
-      <div className={`space-y-1 overflow-y-auto ${compact ? "max-h-32" : "max-h-48"}`}>
-        {data.slice(0, maxItems).map((item, index) => (
-          <div 
-            key={index} 
-            className={`p-2 rounded border border-border/50 bg-accent/20 ${compact ? "text-xs p-1" : "text-sm p-2"}`}
-          >
-            <div className="truncate">
-              {formatSmartValue(item)}
-            </div>
-          </div>
-        ))}
-      </div>
-      {compact && data.length > maxItems && (
-        <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border/20">
-          +{data.length - maxItems} more items
-        </div>
-      )}
-    </div>
-  );
+  // List view is no longer used - redirecting to table view for arrays
+  return renderTableView(widget, data, compact);
 };
 
 export const renderChartView = (
@@ -479,88 +523,20 @@ export const renderChartView = (
   data: unknown,
   compact = false
 ): React.ReactNode => {
-  const numericFields: Array<{ field: string; values: number[]; }> = [];
-  
-  if (widget.config?.selectedFields) {
-    widget.config.selectedFields.forEach(field => {
-      const value = getNestedValue(data, field);
-      
-      if (Array.isArray(value)) {
-        const numbers = value.filter(v => typeof v === 'number') as number[];
-        if (numbers.length > 0) {
-          numericFields.push({ field, values: numbers });
-        }
-      } else if (typeof value === 'number') {
-        numericFields.push({ field, values: [value] });
-      }
-    });
-  }
-
+  // Use the new ChartContainer component
   return (
     <div className={compact ? "space-y-2" : "space-y-4"}>
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="text-xs">
-          Chart View • {numericFields.length} numeric fields detected
+          Chart View • Interactive visualization
         </Badge>
       </div>
       
-      {numericFields.length > 0 ? (
-        <div className={compact ? "space-y-2" : "space-y-4"}>
-          {(compact ? numericFields.slice(0, 2) : numericFields).map(({ field, values }) => {
-            const avg = values.reduce((a, b) => a + b, 0) / values.length;
-            const max = Math.max(...values);
-            const min = Math.min(...values);
-            
-            return (
-              <div key={field} className={compact ? "space-y-1" : "space-y-2"}>
-                <h4 className={`font-medium ${compact ? "text-xs" : "text-sm"}`}>
-                  {widget.config.fieldMappings[field] || field}
-                </h4>
-                <div className={`grid grid-cols-3 gap-2 text-center ${compact ? "text-xs" : ""}`}>
-                  <div className={`p-2 rounded bg-blue-50 dark:bg-blue-900/20 ${compact ? "p-1" : "p-3"}`}>
-                    <div className={`font-bold text-blue-600 ${compact ? "text-sm" : "text-2xl"}`}>{avg.toFixed(2)}</div>
-                    <div className="text-xs text-blue-600/70">Average</div>
-                  </div>
-                  <div className={`p-2 rounded bg-green-50 dark:bg-green-900/20 ${compact ? "p-1" : "p-3"}`}>
-                    <div className={`font-bold text-green-600 ${compact ? "text-sm" : "text-2xl"}`}>{max}</div>
-                    <div className="text-xs text-green-600/70">Maximum</div>
-                  </div>
-                  <div className={`p-2 rounded bg-red-50 dark:bg-red-900/20 ${compact ? "p-1" : "p-3"}`}>
-                    <div className={`font-bold text-red-600 ${compact ? "text-sm" : "text-2xl"}`}>{min}</div>
-                    <div className="text-xs text-red-600/70">Minimum</div>
-                  </div>
-                </div>
-                {values.length > 1 && (
-                  <div className="text-xs text-muted-foreground text-center">
-                    Based on {values.length} values
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          
-          {compact && numericFields.length > 2 && (
-            <div className="text-xs text-muted-foreground text-center">
-              +{numericFields.length - 2} more fields
-            </div>
-          )}
-          
-          {!compact && (
-            <div className="mt-4 p-3 bg-accent/20 rounded-lg text-center">
-              <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Interactive charts coming soon
-              </p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-muted-foreground">
-          <BarChart3 className={`mx-auto mb-2 ${compact ? "h-6 w-6" : "h-8 w-8"}`} />
-          <p className="text-sm">No numeric fields available for charting</p>
-          <p className="text-xs mt-1">Select numeric fields to enable chart view</p>
-        </div>
-      )}
+      <ChartContainer 
+        widget={widget}
+        data={data}
+        compact={compact}
+      />
     </div>
   );
 };

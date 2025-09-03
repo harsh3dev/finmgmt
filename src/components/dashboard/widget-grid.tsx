@@ -201,14 +201,22 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-6">
       {widgets.map(widget => {
         const data = widgetData[widget.id] || { data: null, status: 'loading' };
         const isManualRefreshing = manualRefreshStates[widget.id] || false;
         const isRefreshing = data.status === 'loading' || isManualRefreshing;
+        let spanClass: string;
+        if (widget.displayType === 'table') {
+          spanClass = 'sm:col-span-2 lg:col-span-3 xl:col-span-6';
+        } else if (widget.displayType === 'chart') {
+          spanClass = 'sm:col-span-2 lg:col-span-2 xl:col-span-4';
+        } else {
+          spanClass = 'sm:col-span-1 lg:col-span-1 xl:col-span-2';
+        }
         
         return (
-          <Card key={widget.id} className="relative">
+          <Card key={widget.id} className={`relative ${spanClass}`}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>

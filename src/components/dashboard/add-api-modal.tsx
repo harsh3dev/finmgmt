@@ -539,7 +539,7 @@ export function AddApiModal({
 
             {/* Test API Section */}
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-6 max-w-3xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4" />

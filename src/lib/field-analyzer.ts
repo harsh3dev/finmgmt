@@ -249,21 +249,27 @@ function getRecommendedDisplayType(analysis: {
   hasNestedObjects: boolean;
   hasFinancialFields: boolean;
 }): 'card' | 'table' | 'list' | 'chart' {
+  // Priority 1: Financial data should be visualized as charts
   if (analysis.hasFinancialFields) {
     return 'chart';
   }
   
-  switch (analysis.structureType) {
-    case 'array_of_objects':
-      return 'table';
-    case 'array_of_primitives':
-      return 'list';
-    case 'single_object':
-    case 'nested_object':
-      return 'card';
-    default:
-      return 'card';
+  // Priority 2: Array structures
+  if (analysis.structureType === 'array_of_objects') {
+    return 'table'; // Tables are best for structured arrays
   }
+  
+  if (analysis.structureType === 'array_of_primitives') {
+    return 'list'; // Simple lists for primitive arrays
+  }
+  
+  // Priority 3: Object structures
+  if (analysis.structureType === 'single_object' || analysis.structureType === 'nested_object') {
+    return 'card'; // Cards for object display
+  }
+  
+  // Default fallback
+  return 'card';
 }
 
 /**

@@ -53,7 +53,7 @@ export const createWidgetSchema = z.object({
     .or(z.literal('new'))
     .or(z.literal('')),
   
-  displayType: z.enum(['card', 'table', 'chart'] as const).optional(),
+  displayType: z.enum(['card', 'table', 'chart'] as const),
   
   refreshInterval: z.number()
     .min(30, 'Refresh interval must be at least 30 seconds')

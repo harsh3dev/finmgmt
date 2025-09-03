@@ -10,7 +10,7 @@ const WidgetSchema = z.object({
   apiUrl: z.string().url(), // Required for backwards compatibility
   apiEndpointId: z.string().uuid().optional(),
   refreshInterval: z.number().min(5, 'Refresh interval must be at least 5 seconds'),
-  displayType: z.enum(['card', 'table', 'chart', 'list']).optional(),
+  displayType: z.enum(['card', 'table', 'chart']),
   position: z.object({
     x: z.number().min(0),
     y: z.number().min(0),

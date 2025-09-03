@@ -34,7 +34,6 @@ export function BentoGrid({
   onRemoveWidget, 
   onUpdateWidgetOrder 
 }: BentoGridProps) {
-  // Custom hooks for state management
   const { widgetData, manualRefreshStates, handleManualRefresh } = useWidgetData(widgets, apiEndpoints);
   const {
     expandedWidget,
@@ -46,7 +45,6 @@ export function BentoGrid({
     cancelDelete
   } = useWidgetGrid(onRemoveWidget);
 
-  // Drag and drop functionality
   const {
     sensors,
     itemIds,
@@ -80,15 +78,22 @@ export function BentoGrid({
             "grid-cols-1", // Mobile
             "sm:grid-cols-1", // Small
             "md:grid-cols-2", // Medium
-            "lg:grid-cols-2", // Large
-            "xl:grid-cols-3", // Extra large
-            "2xl:grid-cols-4", // 2XL
+            "lg:grid-cols-3", // Large
+            "xl:grid-cols-12", // Extra large: 12-col system
+            "2xl:grid-cols-12", // 2XL also 12 columns
           )}
           style={{ gridAutoRows: 'min-content' }}>
             {widgets.map(widget => {
               const data = widgetData[widget.id] || { data: null, status: 'loading' };
               const isManualRefreshing = manualRefreshStates[widget.id] || false;
               const isExpanded = expandedWidget === widget.id;
+              // Dynamic width scaling (relative ratios: card=1x, chart=2x, table=3x)
+              // Grid columns: xl=3, 2xl=4. For xl (3 cols) table spans full row, chart spans 2.
+              const spanClass = widget.displayType === 'table'
+                ? 'xl:col-span-12 2xl:col-span-12'
+                : widget.displayType === 'chart'
+                  ? 'xl:col-span-8 2xl:col-span-8'
+                  : 'xl:col-span-4 2xl:col-span-4';
               
               return (
                 <SortableWidget
@@ -102,6 +107,8 @@ export function BentoGrid({
                   onManualRefresh={() => handleManualRefresh(widget)}
                   onConfigureWidget={onConfigureWidget}
                   onRemoveWidget={handleRemoveWidget}
+                  // Pass span classes via wrapperClass prop (added below if not existing)
+                  wrapperClassName={spanClass}
                 />
               );
             })}
@@ -119,7 +126,6 @@ export function BentoGrid({
         </DragOverlay>
       </DndContext>
 
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
         isOpen={deleteDialog.isOpen}
         widget={deleteDialog.widget}

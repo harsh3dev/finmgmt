@@ -118,8 +118,8 @@ function TreeNode({
   };
 
   return (
-    <div className={`${node.depth > 0 ? 'ml-4 sm:ml-6' : ''}`}>
-      <div className={`p-2 sm:p-3 border rounded-lg transition-colors ${
+    <div className={`${node.depth > 0 ? 'ml-4 sm:ml-6' : ''} w-full`}>
+      <div className={`p-2 sm:p-3 border rounded-lg transition-colors w-full ${
         isSelected 
           ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20' 
           : 'border-border/50 bg-background hover:bg-accent/50'
@@ -159,12 +159,12 @@ function TreeNode({
                 htmlFor={isSelectable ? `field-${node.path}` : undefined}
                 className={`font-medium text-sm flex items-center gap-1 ${
                   isSelectable ? 'cursor-pointer' : ''
-                } truncate max-w-[200px] sm:max-w-none`}
+                } break-words max-w-full`}
               >
                 {getFieldIcon()}
-                <span className="truncate">{node.key}</span>
+                <span className="break-words min-w-0 flex-1">{node.key}</span>
                 {node.depth > 0 && (
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                  <span className="text-xs text-muted-foreground hidden sm:inline break-all">
                     ({node.path})
                   </span>
                 )}
@@ -204,7 +204,7 @@ function TreeNode({
             
             {/* Sample value */}
             {node.sampleValue !== undefined && (
-              <p className="text-xs text-muted-foreground mb-2 truncate">
+              <p className="text-xs text-muted-foreground mb-2 break-words">
                 Sample: {formatSimpleValue(node.sampleValue)}
               </p>
             )}
@@ -428,14 +428,14 @@ export function TreeFieldSelection({
   };
 
   return (
-    <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-900/10  w-fit">
+    <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-900/10 w-full max-w-3xl mx-auto">
       <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
         <CardTitle className="text-sm sm:text-base flex items-center gap-2 flex-wrap">
           <Database className="h-4 w-4 shrink-0" />
-          <span className="truncate">Select Fields to Display</span>
+          <span className="break-words">Select Fields to Display</span>
           {getRecommendationBadge(dataStructure)}
         </CardTitle>
-        <CardDescription className="text-xs sm:text-sm">
+        <CardDescription className="text-xs sm:text-sm break-words">
           Choose fields from the API response using the hierarchical tree structure below.
           Selected {selectedFields.length} of {selectableFieldsCount} available fields.
         </CardDescription>
@@ -466,7 +466,7 @@ export function TreeFieldSelection({
       </CardHeader>
       
       <CardContent className="space-y-3 p-3 sm:p-6">
-        <div className="max-h-[40vh] sm:max-h-80 overflow-y-auto space-y-2 pr-2">
+        <div className="max-h-[40vh] sm:max-h-80 overflow-y-auto overflow-x-hidden space-y-2 pr-2">
           {fieldTree.map((node) => (
             <TreeNode
               key={node.path}
@@ -500,28 +500,7 @@ export function TreeFieldSelection({
             </p>
           </div>
         )}
-        
-        {/* Show recommendations based on data structure */}
-        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200 mb-1">
-            <BarChart3 className="h-4 w-4" />
-            <span className="text-sm font-medium">Smart Recommendations</span>
-          </div>
-          <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-            {dataStructure.type === 'array_of_objects' && (
-              <p>• Array of objects detected - Table view recommended for better data organization</p>
-            )}
-            {dataStructure.hasFinancialFields && (
-              <p>• Financial data found - Consider using Chart view for numeric fields to visualize trends</p>
-            )}
-            {dataStructure.hasNestedObjects && (
-              <p>• Nested structure detected - Use the tree view to select specific nested properties</p>
-            )}
-            {dataStructure.type === 'single_object' && (
-              <p>• Single object structure - Card view works best for key-value display</p>
-            )}
-          </div>
-        </div>
+
       </CardContent>
     </Card>
   );

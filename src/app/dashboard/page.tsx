@@ -449,7 +449,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-8xl">
+      <main className="container mx-auto px-4 py-6">
         {activeTab === 'widgets' && (
           <div className="space-y-6">
             {userApiEndpoints.length === 0 ? (
