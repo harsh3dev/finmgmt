@@ -118,6 +118,7 @@ src/
 5. Adaptive Layout: Bento grid assigns variable spans to widget types (e.g. tables wider) with drag-and-drop ordering.
 6. Caching Strategy: In-memory map keyed by endpoint + params; manual refresh bypasses cache.
 7. Template System: Provides blueprint objects referencing required API keys; injects resolved keys at apply time.
+8. Real-Time Stream: The Finnhub WebSocket client updates a Redux slice with up to 100 recent price updates. It removes duplicates, lets you subscribe to different symbols, and reconnects automatically if there are too many requests..
 
 ---
 
