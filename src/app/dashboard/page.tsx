@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { ExportButton } from "@/components/dashboard/export-button";
+import { WidgetAnalysisModal } from "@/components/dashboard/widget-analysis-modal";
 import { 
   BarChart3, 
   Database, 
@@ -14,10 +15,12 @@ import {
   Activity,
   Clock,
   ChevronRight,
-  Plus
+  Plus,
+  Sparkles
 } from "lucide-react";
 import { useReduxDashboardData } from "@/hooks/use-redux-dashboard";
 import Link from "next/link";
+import { useState } from "react";
 
 export default function DashboardOverview() {
   const { 
@@ -30,6 +33,7 @@ export default function DashboardOverview() {
     importedWidgets,
     importedApiEndpoints
   } = useReduxDashboardData();
+  const [analysisOpen, setAnalysisOpen] = useState(false);
 
   if (loading) {
     return (
@@ -112,6 +116,16 @@ export default function DashboardOverview() {
                 variant="outline"
                 size="sm"
               />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAnalysisOpen(true)}
+                disabled={widgets.length === 0}
+                title={widgets.length ? "AI analyze widget configuration" : "Add widgets to enable AI analysis"}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Analyze
+              </Button>
               <Link href="/dashboard/templates">
                 <Button variant="outline" size="sm">
                   <FileText className="h-4 w-4 mr-2" />
@@ -386,6 +400,12 @@ export default function DashboardOverview() {
           </Card>
         )}
       </div>
+      <WidgetAnalysisModal
+        open={analysisOpen}
+        onOpenChange={setAnalysisOpen}
+        widgets={widgets}
+        apiEndpoints={apiEndpoints}
+      />
     </DashboardLayout>
   );
 }
