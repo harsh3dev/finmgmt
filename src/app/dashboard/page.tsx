@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { PageStatusIndicator } from "@/components/dashboard/page-status-indicator";
 import { 
   BarChart3, 
   Database, 
@@ -16,63 +16,33 @@ import {
   ChevronRight,
   Plus
 } from "lucide-react";
-import { secureStorageService } from "@/lib/secure-storage";
-import type { Widget, ApiEndpoint } from "@/types/widget";
-import type { ImportedContent } from "@/types/imported-content";
+import { useDashboardData } from "@/hooks/use-dashboard-data";
 import Link from "next/link";
 
 export default function DashboardOverview() {
-  const [widgets, setWidgets] = useState<Widget[]>([]);
-  const [apiEndpoints, setApiEndpoints] = useState<ApiEndpoint[]>([]);
-  const [importedContent, setImportedContent] = useState<ImportedContent[]>([]);
+  const { 
+    widgets, 
+    apiEndpoints, 
+    importedContent, 
+    loading,
+    userWidgets,
+    userApiEndpoints,
+    importedWidgets,
+    importedApiEndpoints
+  } = useDashboardData();
 
-  useEffect(() => {
-    const savedWidgets = localStorage.getItem('finance-dashboard-widgets');
-    const savedApiEndpoints = localStorage.getItem('finance-dashboard-apis');
-    const savedImportedContent = localStorage.getItem('finance-dashboard-imports');
-    
-    if (savedWidgets) {
-      try {
-        const parsedWidgets = JSON.parse(savedWidgets);
-        setWidgets(parsedWidgets);
-      } catch (error) {
-        console.error('Error loading widgets:', error);
-      }
-    }
-    
-    if (savedApiEndpoints) {
-      try {
-        const parsedApiEndpoints = JSON.parse(savedApiEndpoints);
-        setApiEndpoints(parsedApiEndpoints);
-      } catch (error) {
-        console.error('Error loading API endpoints:', error);
-      }
-    } else {
-      secureStorageService.getApiEndpoints().then(secureEndpoints => {
-        if (secureEndpoints.length > 0) {
-          setApiEndpoints(secureEndpoints);
-        }
-      }).catch(error => {
-        console.error('Error loading secure API endpoints:', error);
-      });
-    }
-
-    if (savedImportedContent) {
-      try {
-        setImportedContent(JSON.parse(savedImportedContent));
-      } catch (error) {
-        console.error('Error loading imported content:', error);
-        setImportedContent([]);
-      }
-    } else {
-      setImportedContent([]);
-    }
-  }, []);
-
-  const userWidgets = widgets.filter(w => !w.isImported);
-  const userApiEndpoints = apiEndpoints.filter(a => !a.isImported);
-  const importedWidgets = widgets.filter(w => w.isImported);
-  const importedApiEndpoints = apiEndpoints.filter(a => a.isImported);
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center space-y-2">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const stats = [
     {
@@ -203,16 +173,22 @@ export default function DashboardOverview() {
                 </div>
               ) : (
                 recentWidgets.map((widget) => (
-                  <div key={widget.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
+                  <div key={widget.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+                    <div className="flex-1">
                       <p className="font-medium text-sm text-foreground">{widget.name}</p>
                       <p className="text-xs text-muted-foreground capitalize">
                         {widget.displayType} • Updated {new Date(widget.updatedAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      <span className="text-xs">{widget.refreshInterval}s</span>
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span className="text-xs">{widget.refreshInterval}s</span>
+                      </div>
+                      <div className={`w-2 h-2 rounded-full ${
+                        widget.refreshInterval <= 30 ? 'bg-green-500' : 
+                        widget.refreshInterval <= 60 ? 'bg-yellow-500' : 'bg-gray-500'
+                      }`} title={`Refresh rate: ${widget.refreshInterval}s`} />
                     </div>
                   </div>
                 ))
@@ -251,16 +227,19 @@ export default function DashboardOverview() {
                 </div>
               ) : (
                 recentApiEndpoints.map((api) => (
-                  <div key={api.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
+                  <div key={api.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+                    <div className="flex-1">
                       <p className="font-medium text-sm text-foreground">{api.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {api.category} • Added {new Date(api.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      <TrendingUp className="h-3 w-3 inline mr-1" />
-                      Active
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3" />
+                        Active
+                      </div>
+                      <div className="w-2 h-2 bg-green-500 rounded-full" title="API endpoint active" />
                     </div>
                   </div>
                 ))
@@ -268,6 +247,71 @@ export default function DashboardOverview() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Activity Summary */}
+        {(widgets.length > 0 || apiEndpoints.length > 0) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />
+                Dashboard Activity
+              </CardTitle>
+              <CardDescription>
+                Overview of your dashboard configuration and usage
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-muted/30 rounded-lg">
+                  <div className="text-lg font-bold text-foreground">{widgets.length}</div>
+                  <p className="text-xs text-muted-foreground">Total Widgets</p>
+                </div>
+                <div className="text-center p-4 bg-muted/30 rounded-lg">
+                  <div className="text-lg font-bold text-foreground">{apiEndpoints.length}</div>
+                  <p className="text-xs text-muted-foreground">API Endpoints</p>
+                </div>
+                <div className="text-center p-4 bg-muted/30 rounded-lg">
+                  <div className="text-lg font-bold text-foreground">
+                    {new Set(apiEndpoints.map(a => a.category)).size}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Data Categories</p>
+                </div>
+                <div className="text-center p-4 bg-muted/30 rounded-lg">
+                  <div className="text-lg font-bold text-foreground">{importedContent.length}</div>
+                  <p className="text-xs text-muted-foreground">Imports</p>
+                </div>
+              </div>
+              
+              {/* Quick Actions Row */}
+              <div className="flex flex-wrap gap-2 pt-2 border-t">
+                <Link href="/dashboard/widgets">
+                  <Button variant="outline" size="sm">
+                    <Grid3X3 className="h-4 w-4 mr-2" />
+                    Manage Widgets
+                  </Button>
+                </Link>
+                <Link href="/dashboard/apis">
+                  <Button variant="outline" size="sm">
+                    <Database className="h-4 w-4 mr-2" />
+                    Manage APIs
+                  </Button>
+                </Link>
+                <Link href="/dashboard/imported">
+                  <Button variant="outline" size="sm">
+                    <FileInput className="h-4 w-4 mr-2" />
+                    View Imports
+                  </Button>
+                </Link>
+                <Link href="/dashboard/templates">
+                  <Button variant="outline" size="sm">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Browse Templates
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick Start Guide */}
         {widgets.length === 0 && apiEndpoints.length === 0 && (
@@ -333,6 +377,11 @@ export default function DashboardOverview() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Development Status - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <PageStatusIndicator />
         )}
       </div>
     </DashboardLayout>
