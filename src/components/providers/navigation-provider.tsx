@@ -105,14 +105,36 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   useEffect(() => {
     const handleResize = () => {
       const isMobile = window.innerWidth < 1024 // lg breakpoint
+      const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024 // md to lg
+      
+      // Close mobile nav on desktop
       if (!isMobile && state.isMobileOpen) {
         dispatch({ type: 'SET_MOBILE_OPEN', payload: false })
       }
+      
+      // Auto-collapse sidebar on tablet for better space utilization
+      if (isTablet && !state.isCollapsed) {
+        dispatch({ type: 'SET_COLLAPSED', payload: true })
+      }
     }
 
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [state.isMobileOpen])
+    // Enhanced debounced resize handler
+    let timeoutId: NodeJS.Timeout
+    const debouncedResize = () => {
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(handleResize, 150)
+    }
+
+    window.addEventListener('resize', debouncedResize)
+    
+    // Initial check
+    handleResize()
+    
+    return () => {
+      window.removeEventListener('resize', debouncedResize)
+      clearTimeout(timeoutId)
+    }
+  }, [state.isMobileOpen, state.isCollapsed])
 
   useEffect(() => {
     const savedState = localStorage.getItem('sidebar-collapsed')

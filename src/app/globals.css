@@ -207,6 +207,48 @@
       padding-left: 17.5rem;
     }
   }
+  
+  /* Enhanced responsive utilities */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  .overscroll-contain {
+    overscroll-behavior: contain;
+  }
+  
+  /* Smooth scrolling for navigation */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+  
+  /* Enhanced focus styles for accessibility */
+  .focus-visible\:ring-2:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--color-ring);
+  }
+  
+  /* Mobile-optimized spacing */
+  @media (max-width: 640px) {
+    .mobile-spacing {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+  
+  /* Tablet-specific adjustments */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .tablet-spacing {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+  
+  /* Prevent zoom on double-tap for better UX on mobile */
+  .no-tap-zoom {
+    touch-action: manipulation;
+  }
 }
 
 /* Custom utilities for sidebar */
@@ -216,5 +258,19 @@
   }
   .pl-70 {
     padding-left: 280px;
+  }
+  
+  /* Enhanced sidebar transitions */
+  .sidebar-transition {
+    transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1),
+                transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Mobile-first container queries */
+  @container (max-width: 320px) {
+    .container-sm-spacing {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
   }
 }
