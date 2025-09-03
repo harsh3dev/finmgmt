@@ -29,38 +29,38 @@ export function TemplateCard({
   const getDifficultyColor = (level: string) => {
     switch (level) {
       case 'beginner':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700';
       case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-700';
       case 'advanced':
-        return 'bg-red-100 text-red-800 border-red-300';
+        return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-700';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 
   const getTagColor = (tag: string) => {
     switch (tag) {
       case 'stocks':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
       case 'crypto':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400';
       case 'forex':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
       case 'economic':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400';
       case 'personal':
-        return 'bg-pink-100 text-pink-800';
+        return 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400';
       case 'api-key':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
       case 'no-setup':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
       case 'demo-data':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground';
       case 'live-data':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -68,7 +68,7 @@ export function TemplateCard({
   const hasDemoData = template.apiEndpoints.length > 0; 
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-200 hover:border-primary/50 relative overflow-hidden">
+    <Card className="group hover:shadow-lg transition-all duration-200 hover:border-primary/50 relative overflow-hidden bg-card">
       {/* Popular badge */}
       {isPopular && (
         <div className="absolute top-3 right-3 z-10">
@@ -103,7 +103,7 @@ export function TemplateCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg font-semibold line-clamp-1">
+            <CardTitle className="text-lg font-semibold line-clamp-1 text-card-foreground">
               {template.name}
             </CardTitle>
             <CardDescription className="text-sm text-muted-foreground line-clamp-2 mt-1">
@@ -162,11 +162,11 @@ export function TemplateCard({
         <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
           <div>
             <div className="text-muted-foreground">Widgets</div>
-            <div className="font-medium">{template.widgets.length}</div>
+            <div className="font-medium text-foreground">{template.widgets.length}</div>
           </div>
           <div>
             <div className="text-muted-foreground">APIs</div>
-            <div className="font-medium">{template.apiEndpoints.length}</div>
+            <div className="font-medium text-foreground">{template.apiEndpoints.length}</div>
           </div>
         </div>
 
