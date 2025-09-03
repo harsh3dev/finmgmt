@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Trash2, ExternalLink, AlertTriangle } from "lucide-react";
 import type { ApiEndpoint } from "@/types/widget";
+import { maskApiKey } from "@/lib/crypto-utils";
 
 interface ApiEndpointListProps {
   apiEndpoints: ApiEndpoint[];
@@ -43,6 +44,23 @@ export function ApiEndpointList({ apiEndpoints, onDeleteEndpoint }: ApiEndpointL
       custom: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
     };
     return colors[category as keyof typeof colors] || colors.custom;
+  };
+
+  const maskHeaderValues = (headers: Record<string, string>) => {
+    const maskedHeaders: Record<string, string> = {};
+    
+    for (const [key, value] of Object.entries(headers)) {
+      // Check if the header key suggests it contains an API key
+      const isApiKeyHeader = /api[-_]?key|authorization|token|secret|bearer/i.test(key);
+      
+      if (isApiKeyHeader && value) {
+        maskedHeaders[key] = maskApiKey(value);
+      } else {
+        maskedHeaders[key] = value;
+      }
+    }
+    
+    return maskedHeaders;
   };
 
   const handleDelete = (apiId: string, apiName: string) => {
@@ -141,7 +159,9 @@ export function ApiEndpointList({ apiEndpoints, onDeleteEndpoint }: ApiEndpointL
                   {endpoint.apiKey && (
                     <div className="flex items-center space-x-2">
                       <span className="font-medium">API Key:</span>
-                      <Badge variant="outline">Configured</Badge>
+                      <Badge variant="outline">
+                        {typeof endpoint.apiKey === 'string' ? maskApiKey(endpoint.apiKey) : 'Configured'}
+                      </Badge>
                     </div>
                   )}
                   
@@ -161,7 +181,7 @@ export function ApiEndpointList({ apiEndpoints, onDeleteEndpoint }: ApiEndpointL
                       View Headers
                     </summary>
                     <pre className="mt-2 bg-muted p-2 rounded overflow-x-auto">
-                      {JSON.stringify(endpoint.headers, null, 2)}
+                      {JSON.stringify(maskHeaderValues(endpoint.headers), null, 2)}
                     </pre>
                   </details>
                 )}

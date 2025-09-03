@@ -3,6 +3,7 @@ import { DashboardExport } from '@/types/dashboard-config';
 import { Widget, ApiEndpoint } from '@/types/widget';
 import { ImportedContent, ImportMetadata } from '@/types/imported-content';
 import { validateDashboardExport } from '@/lib/dashboard-validation';
+import { secureStorageService } from '@/lib/secure-storage';
 
 export interface ImportValidationResult {
   isValid: boolean;
@@ -266,7 +267,9 @@ export async function importDashboardContent(
 
     // Save to localStorage
     localStorage.setItem('finance-dashboard-widgets', JSON.stringify(allWidgets));
-    localStorage.setItem('finance-dashboard-apis', JSON.stringify(allApiEndpoints));
+    secureStorageService.saveApiEndpoints(allApiEndpoints).catch(error => {
+      console.error('Error saving API endpoints during import:', error);
+    });
     localStorage.setItem('finance-dashboard-imports', JSON.stringify(allImports));
 
     return {

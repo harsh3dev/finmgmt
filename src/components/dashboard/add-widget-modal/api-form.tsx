@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Terminal } from "lucide-react";
+import { SecureApiKeyInput } from "@/components/ui/secure-api-key-input";
+import { maskApiKey } from "@/lib/crypto-utils";
 import { useApiForm } from "@/hooks/use-api-form";
 import { useApiTesting } from "@/hooks/use-api-testing";
 import { useFieldSelection } from "@/hooks/use-field-selection";
@@ -28,6 +30,11 @@ interface ApiFormProps {
   onSubmit: (apiData: CreateApiEndpointInput, selectedFields: string[], fieldMappings: Record<string, string>) => void;
   onBack: () => void;
 }
+
+const maskHeaderValue = (key: string, value: string) => {
+  const isApiKeyHeader = /api[-_]?key|authorization|token|secret|bearer/i.test(key);
+  return isApiKeyHeader && value ? maskApiKey(value) : value;
+};
 
 export function ApiForm({ onSubmit, onBack }: ApiFormProps) {
   const [inputMethod, setInputMethod] = useState<'form' | 'curl'>('form');
@@ -222,21 +229,15 @@ export function ApiForm({ onSubmit, onBack }: ApiFormProps) {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="apiKey">API Key (Optional)</Label>
-              <Input
-                id="apiKey"
-                type="password"
+              <SecureApiKeyInput
+                label="API Key (Optional)"
                 placeholder="Enter your API key if required"
                 value={apiForm.apiData.apiKey || ""}
-                onChange={(e) => apiForm.updateField('apiKey', e.target.value)}
-                className={apiForm.errors.apiKey ? "border-destructive" : ""}
+                onChange={(value) => apiForm.updateField('apiKey', value)}
+                storageKey={`widget-api-${apiForm.apiData.name.toLowerCase().replace(/\s+/g, '-')}`}
+                error={apiForm.errors.apiKey}
+                helperText="Will be added as Authorization: Bearer header"
               />
-              {apiForm.errors.apiKey && (
-                <p className="text-sm text-destructive">{apiForm.errors.apiKey}</p>
-              )}
-              <p className="text-sm text-muted-foreground">
-                Will be added as Authorization: Bearer header
-              </p>
             </div>
 
             <div className="grid gap-2">
@@ -317,7 +318,7 @@ export function ApiForm({ onSubmit, onBack }: ApiFormProps) {
                   <div className="text-sm bg-muted p-2 rounded space-y-1">
                     {Object.entries(apiForm.apiData.headers).map(([key, value]) => (
                       <div key={key} className="font-mono">
-                        <span className="text-muted-foreground">{key}:</span> {value}
+                        <span className="text-muted-foreground">{key}:</span> {maskHeaderValue(key, value)}
                       </div>
                     ))}
                   </div>

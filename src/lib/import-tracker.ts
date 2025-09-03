@@ -1,5 +1,6 @@
 import { ImportedContent, ImportMetadata } from '@/types/imported-content';
 import { Widget, ApiEndpoint } from '@/types/widget';
+import { secureStorageService } from '@/lib/secure-storage';
 
 /**
  * Tracks a new import session by creating a record and linking widgets/APIs
@@ -126,7 +127,9 @@ export function removeImportGroup(importId: string): {
 
     // Save updated data
     localStorage.setItem('finance-dashboard-widgets', JSON.stringify(filteredWidgets));
-    localStorage.setItem('finance-dashboard-apis', JSON.stringify(filteredApiEndpoints));
+    secureStorageService.saveApiEndpoints(filteredApiEndpoints).catch(error => {
+      console.error('Error saving API endpoints after import removal:', error);
+    });
     localStorage.setItem('finance-dashboard-imports', JSON.stringify(filteredImports));
 
     return {
@@ -183,7 +186,9 @@ export function removeImportedItem(itemId: string, itemType: 'widget' | 'api'): 
         localStorage.getItem('finance-dashboard-apis') || '[]'
       );
       const filteredApiEndpoints = apiEndpoints.filter(api => api.id !== itemId);
-      localStorage.setItem('finance-dashboard-apis', JSON.stringify(filteredApiEndpoints));
+      secureStorageService.saveApiEndpoints(filteredApiEndpoints).catch(error => {
+        console.error('Error saving API endpoints after item removal:', error);
+      });
     }
 
     // Update import session to remove item reference

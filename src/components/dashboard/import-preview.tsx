@@ -15,17 +15,18 @@ import {
 import { formatRefreshInterval } from '@/lib/utils'
 import { DashboardExport } from '@/types/dashboard-config'
 import { ApiEndpoint } from '@/types/widget'
+import { maskApiKey } from '@/lib/crypto-utils'
 
 interface ImportPreviewProps {
   importData: DashboardExport
   onImport: () => void
-  onCancel: () => void
+  onCancel?: () => void
   isProcessing: boolean
 }
 
 type PreviewTab = 'summary' | 'widgets' | 'apis'
 
-export function ImportPreview({ importData, onImport, onCancel, isProcessing }: ImportPreviewProps) {
+export function ImportPreview({ importData, onImport, isProcessing }: ImportPreviewProps) {
   const [activeTab, setActiveTab] = useState<PreviewTab>('summary')
 
   const { metadata, data } = importData
@@ -54,7 +55,10 @@ export function ImportPreview({ importData, onImport, onCancel, isProcessing }: 
 
   const getApiStatus = (endpoint: ApiEndpoint) => {
     if (endpoint.apiKey) {
-      return { status: 'configured', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' }
+      return { 
+        status: typeof endpoint.apiKey === 'string' ? maskApiKey(endpoint.apiKey) : 'configured', 
+        color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+      }
     }
     return { status: 'needs setup', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' }
   }

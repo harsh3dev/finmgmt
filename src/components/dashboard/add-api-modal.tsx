@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExternalLink, AlertCircle } from "lucide-react";
+import { SecureApiKeyInput } from "@/components/ui/secure-api-key-input";
 import { 
   createApiEndpointSchema, 
   validateFormData,
@@ -372,24 +373,18 @@ export function AddApiModal({
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="apiKey">API Key (Optional)</Label>
-                  <Input
-                    id="apiKey"
-                    type="password"
+                  <SecureApiKeyInput
+                    label="API Key (Optional)"
                     placeholder="Enter your API key if required"
                     value={formData.apiKey || ""}
-                    onChange={(e) => {
-                      setFormData(prev => ({ ...prev, apiKey: e.target.value }));
+                    onChange={(value) => {
+                      setFormData(prev => ({ ...prev, apiKey: value }));
                       clearFieldError('apiKey');
                     }}
-                    className={errors.apiKey ? "border-destructive" : ""}
+                    storageKey={`api-endpoint-${formData.name.toLowerCase().replace(/\s+/g, '-')}`}
+                    error={errors.apiKey}
+                    helperText="Will be added as Authorization: Bearer header"
                   />
-                  {errors.apiKey && (
-                    <p className="text-sm text-destructive">{errors.apiKey}</p>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    Will be added as Authorization: Bearer header
-                  </p>
                 </div>
 
                 <div className="grid gap-2">

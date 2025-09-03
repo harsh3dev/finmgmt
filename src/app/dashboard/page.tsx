@@ -29,6 +29,7 @@ import {
   type ConfigureWidgetInput 
 } from "@/lib/validation";
 import { removeImportGroup } from "@/lib/import-tracker";
+import { secureStorageService } from "@/lib/secure-storage";
 import { exportDashboard } from "@/lib/dashboard-export";
 import { applyTemplate } from "@/lib/template-manager";
 import type { Widget, ApiEndpoint, DashboardTab } from "@/types/widget";
@@ -97,6 +98,14 @@ export default function DashboardPage() {
       } catch (error) {
         console.error('Error loading API endpoints:', error);
       }
+    } else {
+      secureStorageService.getApiEndpoints().then(secureEndpoints => {
+        if (secureEndpoints.length > 0) {
+          setApiEndpoints(secureEndpoints);
+        }
+      }).catch(error => {
+        console.error('Error loading secure API endpoints:', error);
+      });
     }
 
     if (savedImportedContent) {
@@ -116,7 +125,9 @@ export default function DashboardPage() {
   }, [widgets]);
 
   useEffect(() => {
-    localStorage.setItem('finance-dashboard-apis', JSON.stringify(apiEndpoints));
+    secureStorageService.saveApiEndpoints(apiEndpoints).catch(error => {
+      console.error('Error saving API endpoints:', error);
+    });
   }, [apiEndpoints]);
 
   useEffect(() => {
@@ -339,7 +350,9 @@ export default function DashboardPage() {
         const newApiEndpoints = [...apiEndpoints, ...result.apiEndpoints];
         
         localStorage.setItem('finance-dashboard-widgets', JSON.stringify(newWidgets));
-        localStorage.setItem('finance-dashboard-apis', JSON.stringify(newApiEndpoints));
+        secureStorageService.saveApiEndpoints(newApiEndpoints).catch(error => {
+          console.error('Error saving API endpoints:', error);
+        });
         
         setWarningDialog({
           isOpen: true,
