@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { PageStatusIndicator } from "@/components/dashboard/page-status-indicator";
 import { 
   BarChart3, 
   Database, 
@@ -16,7 +15,7 @@ import {
   ChevronRight,
   Plus
 } from "lucide-react";
-import { useDashboardData } from "@/hooks/use-dashboard-data";
+import { useReduxDashboardData } from "@/hooks/use-redux-dashboard";
 import Link from "next/link";
 
 export default function DashboardOverview() {
@@ -29,7 +28,7 @@ export default function DashboardOverview() {
     userApiEndpoints,
     importedWidgets,
     importedApiEndpoints
-  } = useDashboardData();
+  } = useReduxDashboardData();
 
   if (loading) {
     return (
@@ -377,11 +376,6 @@ export default function DashboardOverview() {
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {/* Development Status - Remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <PageStatusIndicator />
         )}
       </div>
     </DashboardLayout>
