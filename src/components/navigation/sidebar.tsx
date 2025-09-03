@@ -22,8 +22,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className }: SidebarProps) {
-  const { state, toggleSidebar, toggleSection, setActiveItem } = useNavigation()
-  const { isCollapsed, openSections } = state
+  const { isCollapsed, openSections, toggleSidebar, toggleSection, setActiveItem } = useNavigation()
   const pathname = usePathname()
 
   // Update active item when pathname changes

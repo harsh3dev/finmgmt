@@ -25,8 +25,7 @@ interface MobileNavProps {
 }
 
 export function MobileNav({ className }: MobileNavProps) {
-  const { state, toggleSection, setMobileNavOpen } = useNavigation()
-  const { isMobileOpen, openSections } = state
+  const { isMobileOpen, openSections, toggleSection, setMobileNavOpen } = useNavigation()
   const pathname = usePathname()
 
   const closeNav = () => {
