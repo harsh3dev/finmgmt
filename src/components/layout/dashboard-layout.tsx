@@ -13,7 +13,10 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, className }: DashboardLayoutProps) {
-  const { state } = useNavigation()
+  const navigation = useNavigation()
+  
+  // Defensive check for isCollapsed property
+  const isCollapsed = Boolean(navigation.isCollapsed)
 
   return (
     <div className="min-h-screen bg-background">
@@ -26,8 +29,8 @@ export function DashboardLayout({ children, className }: DashboardLayoutProps) {
       <div 
         className={cn(
           'transition-all duration-300 ease-in-out',
-          'lg:pl-70',
-          state.isCollapsed && 'lg:pl-16'
+          'lg:pl-64',
+          isCollapsed && 'lg:pl-16'
         )}
       >
         {/* Top Header */}
