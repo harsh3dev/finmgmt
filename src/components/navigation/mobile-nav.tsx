@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { NAVIGATION_CONFIG } from '@/constants/navigation'
 import { NavigationItem, NavigationSection } from '@/types/navigation'
 import { useNavigation } from '@/components/providers/navigation-provider'
+import { isNavigationItemActive } from '@/lib/navigation-utils'
 
 interface MobileNavProps {
   className?: string
@@ -32,6 +33,14 @@ export function MobileNav({ className }: MobileNavProps) {
     setMobileNavOpen(false)
   }
 
+  // Enhanced touch interactions
+  const handleTouchStart = () => {
+    // Add haptic feedback on supported devices
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10)
+    }
+  }
+
   return (
     <div className={cn('lg:hidden', className)}>
       <Sheet open={isMobileOpen} onOpenChange={setMobileNavOpen}>
@@ -39,31 +48,41 @@ export function MobileNav({ className }: MobileNavProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 w-9 p-0 hover:bg-accent hover:text-accent-foreground"
+            className="h-10 w-10 p-0 hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring rounded-md transition-all duration-150 active:scale-95"
+            onTouchStart={handleTouchStart}
           >
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle navigation menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-80 p-0">
-          <SheetHeader className="p-6 border-b">
+        <SheetContent 
+          side="left" 
+          className="w-[85vw] max-w-sm p-0 bg-background/95 backdrop-blur-lg border-border/50"
+        >
+          <SheetHeader className="p-4 sm:p-6 border-b border-border/50">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
                   <span className="text-primary-foreground font-bold text-sm">FM</span>
                 </div>
-                <span className="font-semibold">Finance Manager</span>
+                <span className="font-semibold text-foreground">Finance Manager</span>
               </SheetTitle>
               <SheetClose asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground rounded-md transition-all duration-150 active:scale-95"
+                  onTouchStart={handleTouchStart}
+                >
                   <X className="h-4 w-4" />
+                  <span className="sr-only">Close navigation menu</span>
                 </Button>
               </SheetClose>
             </div>
           </SheetHeader>
           
-          <div className="flex-1 px-6 py-4 overflow-y-auto">
-            <nav className="space-y-4">
+          <div className="flex-1 px-4 py-4 sm:px-6 overflow-y-auto overscroll-contain">
+            <nav className="space-y-3 sm:space-y-4">
               {NAVIGATION_CONFIG.sections.map((section) => (
                 <MobileNavSection
                   key={section.id}
@@ -77,7 +96,7 @@ export function MobileNav({ className }: MobileNavProps) {
             </nav>
           </div>
           
-          <div className="p-6 border-t">
+          <div className="p-4 sm:p-6 border-t border-border/50 bg-muted/30">
             <div className="text-xs text-muted-foreground">
               Finance Dashboard v1.0
             </div>
@@ -106,12 +125,19 @@ function MobileNavSection({
   const hasMultipleItems = section.items.length > 1
   const singleItem = section.items[0]
 
+  // Enhanced touch feedback
+  const handleTouchStart = () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(5)
+    }
+  }
+
   // Single item section
   if (!hasMultipleItems) {
     return (
       <MobileNavItem
         item={singleItem}
-        isActive={activeItem.startsWith(singleItem.href)}
+        isActive={isNavigationItemActive(activeItem, singleItem.href)}
         onClick={onItemClick}
       />
     )
@@ -125,23 +151,24 @@ function MobileNavSection({
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-between h-10 px-3 hover:bg-accent hover:text-accent-foreground"
+            className="w-full justify-between h-11 px-3 hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring rounded-md transition-all duration-150 active:scale-[0.98]"
+            onTouchStart={handleTouchStart}
           >
-            <span className="text-sm font-medium">{section.label}</span>
+            <span className="text-sm font-medium text-foreground">{section.label}</span>
             <ChevronDown 
               className={cn(
-                "h-4 w-4 transition-transform",
+                "h-4 w-4 transition-transform duration-200 text-muted-foreground",
                 isOpen && "transform rotate-180"
               )}
             />
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-1 ml-4">
+        <CollapsibleContent className="space-y-1 ml-3 sm:ml-4 overflow-hidden">
           {section.items.map((item) => (
             <MobileNavItem
               key={item.id}
               item={item}
-              isActive={activeItem.startsWith(item.href)}
+              isActive={isNavigationItemActive(activeItem, item.href)}
               onClick={onItemClick}
             />
           ))}
@@ -160,27 +187,40 @@ interface MobileNavItemProps {
 function MobileNavItem({ item, isActive, onClick }: MobileNavItemProps) {
   const Icon = item.icon
 
+  // Enhanced touch feedback
+  const handleTouchStart = () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(5)
+    }
+  }
+
+  const handleClick = () => {
+    handleTouchStart()
+    onClick()
+  }
+
   return (
-    <Link href={item.href} onClick={onClick}>
+    <Link href={item.href} onClick={handleClick}>
       <Button
         variant="ghost"
         size="sm"
         className={cn(
-          'w-full justify-start h-10 px-3 hover:bg-accent hover:text-accent-foreground',
-          isActive && 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
+          'w-full justify-start h-11 px-3 hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring rounded-md transition-all duration-150 active:scale-[0.98]',
+          isActive && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground shadow-sm'
         )}
+        onTouchStart={handleTouchStart}
       >
         <Icon className="h-4 w-4 mr-3 flex-shrink-0" />
-        <div className="flex-1 text-left">
-          <div className="text-sm font-medium">{item.label}</div>
+        <div className="flex-1 text-left min-w-0">
+          <div className="text-sm font-medium truncate">{item.label}</div>
           {item.description && (
-            <div className="text-xs text-muted-foreground line-clamp-1">
+            <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
               {item.description}
             </div>
           )}
         </div>
         {item.badge && (
-          <span className="ml-2 text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full">
+          <span className="ml-2 text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full flex-shrink-0">
             {item.badge}
           </span>
         )}

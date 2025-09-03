@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { NAVIGATION_CONFIG, SIDEBAR_CONFIG } from '@/constants/navigation'
 import { NavigationItem, NavigationSection } from '@/types/navigation'
 import { useNavigation } from '@/components/providers/navigation-provider'
+import { isNavigationItemActive } from '@/lib/navigation-utils'
 
 interface SidebarProps {
   className?: string
@@ -34,7 +35,8 @@ export function Sidebar({ className }: SidebarProps) {
     <TooltipProvider>
       <div 
         className={cn(
-          'relative h-full bg-sidebar border-r border-sidebar-border transition-all duration-200 ease-in-out',
+          'relative h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out',
+          'flex flex-col',
           isCollapsed ? 'w-16' : 'w-70',
           className
         )}
@@ -43,13 +45,13 @@ export function Sidebar({ className }: SidebarProps) {
         }}
       >
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
+        <div className="flex items-center justify-between p-4 border-b border-sidebar-border flex-shrink-0">
           {!isCollapsed && (
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <div className="flex items-center space-x-2 min-w-0">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
                 <span className="text-primary-foreground font-bold text-sm">FM</span>
               </div>
-              <span className="font-semibold text-sidebar-foreground">Finance Manager</span>
+              <span className="font-semibold text-sidebar-foreground truncate">Finance Manager</span>
             </div>
           )}
           
@@ -58,7 +60,7 @@ export function Sidebar({ className }: SidebarProps) {
             size="sm"
             onClick={toggleSidebar}
             className={cn(
-              'h-8 w-8 p-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+              'h-8 w-8 p-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-all duration-150 active:scale-95 focus-visible:ring-2 focus-visible:ring-sidebar-ring',
               isCollapsed && 'mx-auto'
             )}
           >
@@ -67,11 +69,14 @@ export function Sidebar({ className }: SidebarProps) {
             ) : (
               <ChevronLeft className="h-4 w-4" />
             )}
+            <span className="sr-only">
+              {isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            </span>
           </Button>
         </div>
 
         {/* Navigation Content */}
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-2">
           <nav className="space-y-2">
             {isCollapsed ? (
               // Collapsed view - show all items as individual icons with section separators
@@ -79,14 +84,14 @@ export function Sidebar({ className }: SidebarProps) {
                 {NAVIGATION_CONFIG.sections.map((section, sectionIndex) => (
                   <div key={section.id}>
                     {sectionIndex > 0 && (
-                      <div className="my-3 border-t border-sidebar-border"></div>
+                      <div className="my-3 border-t border-sidebar-border/50"></div>
                     )}
                     {section.items.map((item) => (
                       <SidebarItem
                         key={item.id}
                         item={item}
                         isCollapsed={true}
-                        isActive={pathname.startsWith(item.href)}
+                        isActive={isNavigationItemActive(pathname, item.href)}
                       />
                     ))}
                   </div>
@@ -110,7 +115,7 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-sidebar-border flex-shrink-0">
           {!isCollapsed && (
             <div className="text-xs text-muted-foreground">
               Finance Dashboard v1.0
@@ -144,7 +149,7 @@ function SidebarSection({
       <SidebarItem
         item={singleItem}
         isCollapsed={false}
-        isActive={activeItem.startsWith(singleItem.href)}
+        isActive={isNavigationItemActive(activeItem, singleItem.href)}
       />
     )
   }
@@ -157,26 +162,26 @@ function SidebarSection({
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-between h-9 px-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="w-full justify-between h-9 px-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-all duration-150 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
             <span className="text-sm font-medium text-sidebar-foreground">
               {section.label}
             </span>
             <ChevronDown 
               className={cn(
-                "h-4 w-4 transition-transform text-sidebar-foreground",
+                "h-4 w-4 transition-transform duration-200 text-sidebar-foreground/70",
                 isOpen && "transform rotate-180"
               )}
             />
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-1 ml-2">
+        <CollapsibleContent className="space-y-1 ml-2 overflow-hidden">
           {section.items.map((item) => (
             <SidebarItem
               key={item.id}
               item={item}
               isCollapsed={false}
-              isActive={activeItem.startsWith(item.href)}
+              isActive={isNavigationItemActive(activeItem, item.href)}
             />
           ))}
         </CollapsibleContent>
@@ -203,11 +208,12 @@ function SidebarItem({ item, isCollapsed, isActive }: SidebarItemProps) {
               variant="ghost"
               size="sm"
               className={cn(
-                'w-full h-10 p-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                isActive && 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground'
+                'w-full h-10 p-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-all duration-150 active:scale-95 focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                isActive && 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground shadow-sm'
               )}
             >
               <Icon className="h-5 w-5" />
+              <span className="sr-only">{item.label}</span>
             </Button>
           </Link>
         </TooltipTrigger>
@@ -229,14 +235,14 @@ function SidebarItem({ item, isCollapsed, isActive }: SidebarItemProps) {
         variant="ghost"
         size="sm"
         className={cn(
-          'w-full justify-start h-9 px-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-          isActive && 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground'
+          'w-full justify-start h-9 px-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-all duration-150 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+          isActive && 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground shadow-sm'
         )}
       >
         <Icon className="h-4 w-4 mr-3 flex-shrink-0" />
-        <span className="text-sm font-medium truncate">{item.label}</span>
+        <span className="text-sm font-medium truncate flex-1 text-left">{item.label}</span>
         {item.badge && (
-          <span className="ml-auto text-xs bg-sidebar-accent text-sidebar-accent-foreground px-2 py-0.5 rounded-full">
+          <span className="ml-auto text-xs bg-sidebar-accent text-sidebar-accent-foreground px-2 py-0.5 rounded-full flex-shrink-0">
             {item.badge}
           </span>
         )}
