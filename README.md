@@ -22,7 +22,6 @@ Core functionality:
 - ✅ Smart widget type inference (auto card / table / chart selection from raw JSON)
 - ✅ Hierarchical field explorer (nested objects & arrays with type detection)
 - ✅ Secure API key encryption (AES‑GCM + device-derived key, masked display)
-- ✅ Currency conversion via secure proxy + formatting utilities
 - ✅ Responsive bento grid with drag‑and‑drop & expansion logic
 - ✅ Table widgets: search, pagination, adaptive column formatting
 - ✅ Chart widgets: numeric string parsing & adaptive chart selection
@@ -69,7 +68,6 @@ flowchart LR
 	WG -->|needs data| APIService
 	APIService --> Cache["In-Memory Cache"]
 	APIService --> ExternalAPIs["External Financial APIs"]
-	APIService --> CurrencyProxy["Currency Conversion Proxy"]
 	WG --> FieldAnalyzer["Field Analyzer"]
 	FieldAnalyzer --> Renderer["Smart Renderer (Card / Table / Chart)"]
 	ST --> Persistence["LocalStorage"]
@@ -130,6 +128,68 @@ src/
 3. Response analyzed → tree metadata generated → optimal display mode inferred (card, table, chart).
 4. Renderer builds UI; user can expand, reconfigure, rename, or refresh.
 5. State (widgets, layout, endpoints) persisted after hydration gate opens.
+
+---
+
+## Persistence Flow (Redux + localStorage)
+
+End-to-end view of how state is restored and then persisted without race conditions.
+
+```mermaid
+flowchart TD
+	Mount[App Mount] --> MWInit["Persistence Middleware Init"]
+	MWInit --> StorageMgr["Storage Manager (dashboard-storage.ts)"]
+	StorageMgr --> ReadLS{Snapshot Exists?}
+	ReadLS -- Yes --> Load["Read & Parse JSON"]
+	Load --> Hydrate["Dispatch HYDRATE actions per slice"]
+	ReadLS -- No --> GateOpen["Set hydrated = true"]
+	Hydrate --> GateOpen
+	GateOpen --> UserAction["User Action (add / update / remove widget / endpoint)"]
+	UserAction --> ReduxUpdate["Redux State Updated"]
+	ReduxUpdate --> PersistCheck{hydrated?}
+	PersistCheck -- No --> Skip["Skip Write"]
+	PersistCheck -- Yes --> Select["Select Persisted Slices (widgets, endpoints, layout)"]
+	Select --> Serialize["JSON Serialize"]
+	Serialize --> StorageMgr
+	StorageMgr --> WriteLS["localStorage Write"]
+	WriteLS --> Ready["State Persisted"]
+	Ready --> UserAction
+```
+
+Key points:
+
+- Hydration Gate: Prevents clobbering stored state during initial mount; writes are suppressed until hydrate completes.
+- Slice Selection: Only whitelisted slices (widgets, endpoints, layout) are serialized—avoids volatile/transient UI state.
+- Atomic Writes: Full snapshot replace strategy keeps structure consistent and simplifies versioning.
+- Extensibility: New slices can be added by extending the allowlist in the persistence middleware.
+- Safety: Malformed JSON triggers a guarded fallback (fresh state) without crashing the app (implemented via try/catch in middleware logic).
+ - Storage Manager: Encapsulates read/write (with version tag + future migration hooks) so middleware stays pure and testable.
+
+### Import / Export Flow
+
+The import/export system ensures portable, safe dashboard state sharing without leaking sensitive credentials.
+
+Export (dashboard-export.ts):
+1. Aggregate: Collect whitelisted slices (widgets, endpoints, layout, templates metadata).
+2. Sanitize: Strip or mask sensitive fields (encrypted API key payloads excluded; only key references kept).
+3. Normalize: Re-map transient UI-only flags out (e.g., expansion state) to keep export deterministic.
+4. Annotate: Attach version, timestamp, and schema signature for forward compatibility.
+5. Serialize & Download: Generate JSON blob; user triggers browser download.
+
+Import (dashboard-import.ts + import-tracker.ts):
+1. Parse: Attempt JSON parse; reject early on size or invalid structure.
+2. Validate: Run Zod schema validation (shape, required arrays, version).
+3. Migrate (if needed): Apply lightweight transformation when version < current (placeholder hooks).
+4. Reconcile IDs: Generate new UUIDs where collisions exist (widgets/endpoints) while maintaining internal references.
+5. Merge Strategy: Existing state can be replaced or merged (future toggle) — current behavior: additive merge with overwrite for identical endpoint signatures.
+6. Dispatch: Batched Redux actions hydrate imported entities after hydration gate.
+7. Track: Import tracker logs summary (counts, skipped, newly added) for future UI feedback.
+
+Guarantees:
+- No secret material injected (API keys must still be supplied locally post-import).
+- Consistent ordering for deterministic diffs.
+- Forward-compatible via version + optional migration layer.
+- Safe failure modes (partial writes avoided; import only commits after full validation passes).
 
 ---
 
