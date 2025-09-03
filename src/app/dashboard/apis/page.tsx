@@ -18,12 +18,12 @@ import { Plus, Database, AlertTriangle, Activity, Tag } from "lucide-react";
 import { 
   type CreateApiEndpointInput
 } from "@/lib/validation";
-import { useWidgets, useApiEndpoints } from "@/hooks/use-dashboard-data";
+import { useReduxWidgets, useReduxApiEndpoints } from "@/hooks/use-redux-dashboard";
 import type { ApiEndpoint } from "@/types/widget";
 
 export default function ApisPage() {
-  const { widgets, loading: widgetsLoading } = useWidgets();
-  const { apiEndpoints, addApiEndpoint, removeApiEndpoint, loading: apisLoading } = useApiEndpoints();
+  const { widgets, loading: widgetsLoading } = useReduxWidgets();
+  const { apiEndpoints, addApiEndpoint, removeApiEndpoint, loading: apisLoading } = useReduxApiEndpoints();
   
   const [isAddApiModalOpen, setIsAddApiModalOpen] = useState(false);
   const [warningDialog, setWarningDialog] = useState<{
