@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/components/query-provider";
+import { NavigationProvider } from "@/components/providers/navigation-provider";
 
 export const metadata: Metadata = {
   title: "Finance Management",
@@ -25,7 +26,9 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <NavigationProvider>
+              {children}
+            </NavigationProvider>
           </ThemeProvider>
         </QueryProvider>
       </body>

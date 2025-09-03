@@ -189,3 +189,32 @@
     letter-spacing: var(--tracking-normal);
   }
 }
+
+@layer utilities {
+  .w-16 {
+    width: 4rem;
+  }
+  .w-70 {
+    width: 17.5rem;
+  }
+  .lg\:pl-16 {
+    @media (min-width: 1024px) {
+      padding-left: 4rem;
+    }
+  }
+  .lg\:pl-70 {
+    @media (min-width: 1024px) {
+      padding-left: 17.5rem;
+    }
+  }
+}
+
+/* Custom utilities for sidebar */
+@layer utilities {
+  .w-70 {
+    width: 280px;
+  }
+  .pl-70 {
+    padding-left: 280px;
+  }
+}
