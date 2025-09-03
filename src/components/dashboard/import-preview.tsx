@@ -12,6 +12,7 @@ import {
   Clock,
   CheckCircle
 } from 'lucide-react'
+import { formatRefreshInterval } from '@/lib/utils'
 import { DashboardExport } from '@/types/dashboard-config'
 import { ApiEndpoint } from '@/types/widget'
 
@@ -62,7 +63,6 @@ export function ImportPreview({ importData, onImport, onCancel, isProcessing }: 
     <div className="flex flex-col h-full">
       {/* Preview Header */}
       <div className="border-b pb-4 mb-4">
-        <h3 className="text-lg font-semibold mb-2">Import Preview</h3>
         <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
@@ -112,7 +112,7 @@ export function ImportPreview({ importData, onImport, onCancel, isProcessing }: 
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto max-h-96">
         {activeTab === 'summary' && (
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto h-fit">
             {/* Quick Action Header */}
             <div className="p-4 rounded-lg border-2 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
               <div className="flex items-center justify-between">
@@ -177,23 +177,7 @@ export function ImportPreview({ importData, onImport, onCancel, isProcessing }: 
                 </p>
               )}
             </div>
-
-            {/* Import Strategy */}
-            <div className="p-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
-              <div className="flex items-start gap-3">
-                <Upload className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
-                    Import Strategy
-                  </h4>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    Imported content will be added to the &ldquo;Imported&rdquo; tab with new IDs to avoid conflicts. 
-                    Your existing dashboard content will remain unchanged.
-                  </p>
-                </div>
-              </div>
-            </div>
-
+            
             {/* Content Breakdown */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 rounded-lg border">
@@ -267,11 +251,6 @@ export function ImportPreview({ importData, onImport, onCancel, isProcessing }: 
                 </div>
               </div>
             </div>
-
-            {/* Scroll indicator for mobile/small screens */}
-            <div className="text-center text-xs text-gray-500 dark:text-gray-400 py-2">
-              Scroll down to see details or use tabs to explore content
-            </div>
           </div>
         )}
 
@@ -298,7 +277,7 @@ export function ImportPreview({ importData, onImport, onCancel, isProcessing }: 
                   {/* Remove description field as it doesn't exist in Widget type */}
                   <div className="flex items-center gap-2 text-xs">
                     <Clock className="h-3 w-3" />
-                    <span>Refresh: {widget.refreshInterval || 300}s</span>
+                    <span>Refresh: {formatRefreshInterval(widget.refreshInterval || 300)}</span>
                   </div>
                 </div>
               </div>
@@ -336,37 +315,6 @@ export function ImportPreview({ importData, onImport, onCancel, isProcessing }: 
             })}
           </div>
         )}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="border-t pt-4 mt-4 bg-gray-50 dark:bg-gray-900 -mx-6 px-6 -mb-6 pb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Review the content above, then click Import to add it to your dashboard.
-          </div>
-          <div className="flex gap-3 w-full sm:w-auto">
-            <Button variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1 sm:flex-none">
-              Cancel
-            </Button>
-            <Button 
-              onClick={onImport} 
-              disabled={isProcessing}
-              className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white"
-            >
-              {isProcessing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Importing...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import Dashboard
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   )

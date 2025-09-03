@@ -14,6 +14,7 @@ import {
 import { Settings, RefreshCw, Clock, Trash2, AlertTriangle } from "lucide-react";
 import { apiService } from "@/lib/api-service";
 import { SmartWidgetRenderer } from "./smart-widget-renderer";
+import { formatRefreshInterval } from "@/lib/utils";
 import type { Widget, ApiResponse, ApiEndpoint } from "@/types/widget";
 
 interface WidgetGridProps {
@@ -35,7 +36,6 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
     widget: null
   });
 
-  // Fetch data for a specific widget
   const fetchWidgetData = async (widget: Widget, options: { bypassCache?: boolean } = {}) => {
     setWidgetData(prev => ({
       ...prev,
@@ -43,12 +43,9 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
     }));
 
     try {
-      // Find the API endpoint for this widget
-      // First try to find by apiEndpointId (new architecture)
       let endpoint = apiEndpoints.find(api => api.id === widget.apiEndpointId);
       
       if (!endpoint) {
-        // Fallback: try to find by URL for backwards compatibility
         endpoint = apiEndpoints.find(api => api.url === widget.apiUrl);
       }
       
@@ -56,7 +53,6 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
         throw new Error('API endpoint not found for widget');
       }
 
-      // Use the API service to fetch data with appropriate options
       const response = await apiService.fetchData(endpoint, {
         bypassCache: options.bypassCache,
         timeout: 30000
@@ -84,19 +80,14 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
     }
   };
 
-  // Set up auto-refresh for widgets
   useEffect(() => {
-    // Clear existing timers
     Object.values(refreshTimers).forEach(timer => clearInterval(timer));
 
-    // Set up new timers
     const newTimers: Record<string, NodeJS.Timeout> = {};
     
     widgets.forEach(widget => {
-      // Initial fetch (with cache)
       fetchWidgetData(widget, { bypassCache: false });
       
-      // Set up recurring fetch (with cache)
       const timer = setInterval(() => {
         fetchWidgetData(widget, { bypassCache: false });
       }, widget.refreshInterval * 1000);
@@ -106,30 +97,24 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
 
     setRefreshTimers(newTimers);
 
-    // Cleanup on unmount or widgets change
     return () => {
       Object.values(newTimers).forEach(timer => clearInterval(timer));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [widgets]);
 
-  // Manual refresh with cache bypass
   const handleManualRefresh = async (widget: Widget) => {
-    // Set manual refresh state
     setManualRefreshStates(prev => ({ ...prev, [widget.id]: true }));
     
-    // Set loading state immediately for better UX
     setWidgetData(prev => ({
       ...prev,
       [widget.id]: { ...prev[widget.id], status: 'loading' }
     }));
     
     try {
-      // Find the API endpoint for this widget
       let endpoint = apiEndpoints.find(api => api.id === widget.apiEndpointId);
       
       if (!endpoint) {
-        // Fallback: try to find by URL for backwards compatibility
         endpoint = apiEndpoints.find(api => api.url === widget.apiUrl);
       }
       
@@ -137,7 +122,6 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
         throw new Error('API endpoint not found for widget');
       }
 
-      // Use force refresh to bypass cache and request deduplication
       const response = await apiService.forceRefresh(endpoint);
 
       setWidgetData(prev => ({
@@ -160,14 +144,12 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
         }
       }));
     } finally {
-      // Clear manual refresh state after a brief delay to show success
       setTimeout(() => {
         setManualRefreshStates(prev => ({ ...prev, [widget.id]: false }));
       }, 500);
     }
   };
 
-  // Handle widget removal with confirmation
   const handleRemoveWidget = (widget: Widget) => {
     setDeleteDialog({
       isOpen: true,
@@ -192,7 +174,6 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
     });
   };
 
-  // Render widget content using the smart renderer
   const renderWidgetContent = (widget: Widget, data: ApiResponse) => {
     if (data.status === 'loading') {
       return (
@@ -212,7 +193,6 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
       );
     }
 
-    // Use the smart widget renderer for all widget content
     return <SmartWidgetRenderer widget={widget} data={data} onConfigureWidget={onConfigureWidget} />;
   };
 
@@ -234,7 +214,7 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
                 <div>
                   <CardTitle className="text-lg">{widget.name}</CardTitle>
                   <CardDescription className="text-sm">
-                    {widget.displayType} • {widget.refreshInterval}s refresh
+                    {widget.displayType} • {formatRefreshInterval(widget.refreshInterval)}
                   </CardDescription>
                 </div>
                 <div className="flex items-center space-x-2">

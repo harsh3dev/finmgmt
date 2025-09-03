@@ -18,7 +18,6 @@ import { useApiForm } from "@/hooks/use-api-form";
 import { useApiTesting } from "@/hooks/use-api-testing";
 import { useFieldSelection } from "@/hooks/use-field-selection";
 
-// Add array configuration state
 interface ArrayConfigType {
   displayMode: 'list' | 'table' | 'chart' | 'summary';
   selectedProperties?: string[];
@@ -67,7 +66,6 @@ export function AddWidgetModal({
     const validation = widgetForm.validateForm();
     if (!validation.success || !validation.data) return;
 
-    // If using existing API, proceed to field selection
     const hasApiEndpoint = widgetForm.widgetData.apiEndpointId && 
                           widgetForm.widgetData.apiEndpointId !== 'new';
     
@@ -76,13 +74,6 @@ export function AddWidgetModal({
       if (selectedEndpoint) {
         setSelectedApiEndpoint(selectedEndpoint);
         setCurrentStep('field-selection');
-        
-        // If we have cached sample response, load it immediately
-        if (selectedEndpoint.sampleResponse) {
-          const autoFieldSelection = apiTesting.generateAutoFieldSelection(selectedEndpoint.sampleResponse);
-          fieldSelection.updateFieldSelection(autoFieldSelection);
-          apiTesting.setTestResult({ success: true, message: 'Using cached API response' });
-        }
       }
     } else if (widgetForm.widgetData.apiEndpointId === 'new') {
       setCurrentStep('api');
@@ -97,7 +88,6 @@ export function AddWidgetModal({
   };
 
   const handleFieldSelectionSubmit = () => {
-    // Submit widget with selected fields from existing API
     const enhancedWidgetData = {
       ...widgetForm.widgetData,
       config: {
@@ -105,7 +95,7 @@ export function AddWidgetModal({
         fieldMappings: fieldSelection.fieldSelection.fieldMappings,
         formatSettings: {},
         styling: {},
-        arrayConfigs: arrayConfigs // Include array configurations
+        arrayConfigs: arrayConfigs
       }
     };
     
@@ -124,16 +114,7 @@ export function AddWidgetModal({
       return;
     }
     
-    // If we have cached sample response, use it instead of making a new API call
-    if (selectedApiEndpoint.sampleResponse) {
-      const autoFieldSelection = apiTesting.generateAutoFieldSelection(selectedApiEndpoint.sampleResponse);
-      fieldSelection.updateFieldSelection(autoFieldSelection);
-      // Set the test result as successful
-      apiTesting.setTestResult({ success: true, message: 'Using cached API response' });
-      return;
-    }
-    
-    // Otherwise, make a real API call
+    // Make a real API call to test the endpoint
     await apiTesting.testApi(selectedApiEndpoint, (responseData) => {
       const autoFieldSelection = apiTesting.generateAutoFieldSelection(responseData);
       fieldSelection.updateFieldSelection(autoFieldSelection);
@@ -204,14 +185,6 @@ export function AddWidgetModal({
                   onTest={handleTestExistingApi}
                   disabled={false}
                 />
-                {/* Show info about cached response */}
-                {selectedApiEndpoint?.sampleResponse && apiTesting.apiTestResult?.success && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 w-fit">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Using cached API response from when this endpoint was created. Click &quot;Test API&quot; above to fetch fresh data if needed.
-                    </p>
-                  </div>
-                )}
                 {/* Field Selection Section */}
                 {fieldSelection.hasResponseData && apiTesting.isTestSuccessful && (
                   <TreeFieldSelection

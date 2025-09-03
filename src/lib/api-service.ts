@@ -29,9 +29,6 @@ export class ApiService {
     return ApiService.instance;
   }
 
-  /**
-   * Parse a cURL command string into a request object
-   */
   parseCurlCommand(curlCommand: string): ParsedCurlRequest {
     const result: ParsedCurlRequest = {
       url: '',
@@ -39,7 +36,6 @@ export class ApiService {
       headers: {},
     };
 
-    // Handle the case where the command starts with "curl:"
     let cleanCommand = curlCommand.trim();
     if (cleanCommand.toLowerCase().startsWith('curl command:')) {
       cleanCommand = cleanCommand.substring(13).trim();
@@ -47,7 +43,6 @@ export class ApiService {
       cleanCommand = cleanCommand.substring(5).trim();
     }
 
-    // Remove 'curl' from the beginning and normalize whitespace
     cleanCommand = cleanCommand
       .replace(/^curl\s*/i, '')
       .replace(/\\\s*\n\s*/g, ' ')
@@ -65,10 +60,8 @@ export class ApiService {
 
     let urlMatch = cleanCommand.match(/(?:^|\s)--url\s+['"]?([^'"\s]+)['"]?/);
     if (!urlMatch) {
-      // Look for quoted URLs
       urlMatch = cleanCommand.match(/(?:^|\s)['"]([^'"]*https?:\/\/[^'"]+)['"]/) ||
                  cleanCommand.match(/(?:^|\s)['"]([^'"\s]*\.[^'"\s]+[^'"\s]*)['"]/) ||
-                 // Look for unquoted URLs
                  cleanCommand.match(/(?:^|\s)(https?:\/\/[^\s]+)/) ||
                  cleanCommand.match(/(?:^|\s)([^\s]*\.[^\s]+[^\s]*)/);
     }
@@ -103,9 +96,6 @@ export class ApiService {
     return result;
   }
 
-  /**
-   * Fetch data from an API endpoint with caching and error handling
-   */
   async fetchData(
     endpoint: ApiEndpoint, 
     options: {
@@ -117,10 +107,8 @@ export class ApiService {
     const { bypassCache = false, timeout = 30000, curlCommand } = options;
     
     try {
-      // Create cache key
       const cacheKey = `${endpoint.id}-${endpoint.url}`;
       
-      // Check cache first (unless bypassing)
       if (!bypassCache) {
         const cached = this.getCachedResponse(cacheKey);
         if (cached) {
@@ -128,26 +116,22 @@ export class ApiService {
         }
       }
 
-      // Check if request is already in progress
       if (this.requestQueue.has(cacheKey)) {
         return await this.requestQueue.get(cacheKey)!;
       }
 
-      // Create request promise
       const requestPromise = this.executeRequest(endpoint, timeout, curlCommand);
       this.requestQueue.set(cacheKey, requestPromise);
 
       try {
         const response = await requestPromise;
         
-        // Cache successful responses for 5 minutes
         if (response.status === 'success') {
           this.setCachedResponse(cacheKey, response, 5 * 60 * 1000);
         }
 
         return response;
       } finally {
-        // Remove from queue when complete
         this.requestQueue.delete(cacheKey);
       }
 
@@ -163,9 +147,6 @@ export class ApiService {
     }
   }
 
-  /**
-   * Execute the actual HTTP request
-   */
   private async executeRequest(
     endpoint: ApiEndpoint, 
     timeout: number,
@@ -179,7 +160,6 @@ export class ApiService {
       let url: string;
 
       if (curlCommand) {
-        // Parse cURL command if provided
         const parsed = this.parseCurlCommand(curlCommand);
         url = parsed.url;
         requestConfig = {
@@ -192,14 +172,24 @@ export class ApiService {
           signal: controller.signal,
         };
       } else {
-        // Use endpoint configuration
         url = endpoint.url;
+        
+        if (url.includes('{{ALPHA_VANTAGE_API_KEY}}')) {
+          const alphaVantageKey = process.env.NEXT_PUBLIC_ALPHA_VANTAGE_API_KEY;
+          console.log('Alpha Vantage API Key found in browser:', alphaVantageKey ? 'YES' : 'NO');
+          if (alphaVantageKey) {
+            url = url.replace('{{ALPHA_VANTAGE_API_KEY}}', alphaVantageKey);
+            console.log('Updated Alpha Vantage URL:', url);
+          } else {
+            console.error('Alpha Vantage API key not found in environment');
+          }
+        }
+        
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
           ...endpoint.headers,
         };
 
-        // Add API key to headers if available
         if (endpoint.apiKey) {
           headers['Authorization'] = `Bearer ${endpoint.apiKey}`;
         }
@@ -224,7 +214,6 @@ export class ApiService {
         data = await response.json();
       } else {
         const text = await response.text();
-        // Try to parse as JSON, fallback to text
         try {
           data = JSON.parse(text);
         } catch {
@@ -248,9 +237,6 @@ export class ApiService {
     }
   }
 
-  /**
-   * Get cached response if valid
-   */
   private getCachedResponse(key: string): ApiResponse | null {
     const cached = this.cache.get(key);
     if (!cached) return null;
@@ -267,9 +253,6 @@ export class ApiService {
     };
   }
 
-  /**
-   * Set cached response
-   */
   private setCachedResponse(key: string, response: ApiResponse, ttl: number): void {
     this.cache.set(key, {
       data: response,
@@ -278,32 +261,20 @@ export class ApiService {
     });
   }
 
-  /**
-   * Force refresh data for a specific endpoint (bypasses cache and request deduplication)
-   */
   async forceRefresh(endpoint: ApiEndpoint): Promise<ApiResponse> {
     const cacheKey = `${endpoint.id}-${endpoint.url}`;
     
-    // Clear cache for this endpoint
     this.clearCacheForEndpoint(endpoint.id);
     
-    // Remove from request queue if exists
     this.requestQueue.delete(cacheKey);
     
-    // Execute fresh request
     return this.fetchData(endpoint, { bypassCache: true, timeout: 30000 });
   }
 
-  /**
-   * Clear all cached responses
-   */
   clearCache(): void {
     this.cache.clear();
   }
 
-  /**
-   * Clear cached response for a specific endpoint
-   */
   clearCacheForEndpoint(endpointId: string): void {
     const keysToDelete = Array.from(this.cache.keys()).filter(key => 
       key.startsWith(`${endpointId}-`)
@@ -311,9 +282,6 @@ export class ApiService {
     keysToDelete.forEach(key => this.cache.delete(key));
   }
 
-  /**
-   * Test an API endpoint configuration
-   */
   async testEndpoint(endpoint: Omit<ApiEndpoint, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse> {
     const testEndpoint: ApiEndpoint = {
       ...endpoint,
@@ -325,9 +293,6 @@ export class ApiService {
     return this.fetchData(testEndpoint, { bypassCache: true, timeout: 10000 });
   }
 
-  /**
-   * Get cache statistics
-   */
   getCacheStats(): { size: number; keys: string[] } {
     return {
       size: this.cache.size,

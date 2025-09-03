@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Widget, ApiResponse } from "@/types/widget";
+import { formatRefreshInterval } from "@/lib/utils";
 import { WidgetContent } from "./widget-content";
 
 interface DragOverlayProps {
@@ -18,7 +19,7 @@ export function DragOverlay({ widget, data, onConfigureWidget }: DragOverlayProp
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">{widget.name}</CardTitle>
           <CardDescription className="text-sm">
-            {widget.displayType} • {widget.refreshInterval}s refresh
+            {widget.displayType} • {formatRefreshInterval(widget.refreshInterval)}
           </CardDescription>
         </CardHeader>
         <CardContent>

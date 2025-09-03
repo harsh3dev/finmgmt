@@ -7,10 +7,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-/**
- * Extract field paths from API response data for field selection
- * Enhanced version that supports complex nested structures
- */
 export function extractFieldsFromData(data: Record<string, unknown> | unknown[] | null): string[] {
   if (!data) return [];
   
@@ -20,9 +16,6 @@ export function extractFieldsFromData(data: Record<string, unknown> | unknown[] 
     .map(meta => meta.path);
 }
 
-/**
- * Get enhanced field options with metadata for advanced field selection
- */
 export function getFieldOptions(data: Record<string, unknown> | unknown[] | null): FieldOption[] {
   if (!data) return [];
   
@@ -30,9 +23,6 @@ export function getFieldOptions(data: Record<string, unknown> | unknown[] | null
   return generateFieldOptions(metadata);
 }
 
-/**
- * Get field metadata for a specific path
- */
 export function getFieldMetadata(data: Record<string, unknown> | unknown[] | null, fieldPath: string): FieldMetadata | null {
   if (!data) return null;
   
@@ -40,10 +30,6 @@ export function getFieldMetadata(data: Record<string, unknown> | unknown[] | nul
   return metadata.find(meta => meta.path === fieldPath) || null;
 }
 
-/**
- * Get field value from data using dot notation path
- * Enhanced version with array support
- */
 export function getFieldValue(data: Record<string, unknown> | unknown[] | null, fieldPath: string): unknown {
   if (!data) return null;
   
@@ -54,7 +40,6 @@ export function getFieldValue(data: Record<string, unknown> | unknown[] | null, 
     if (typeof current === 'object' && current !== null && !Array.isArray(current)) {
       current = (current as Record<string, unknown>)[part];
     } else if (Array.isArray(current) && current.length > 0) {
-      // For arrays, try to get the field from the first item for preview
       const firstItem = current[0];
       if (typeof firstItem === 'object' && firstItem !== null) {
         current = (firstItem as Record<string, unknown>)[part];
@@ -69,47 +54,35 @@ export function getFieldValue(data: Record<string, unknown> | unknown[] | null, 
   return current;
 }
 
-/**
- * Format field value for display in UI
- * Enhanced version with better array and object handling
- */
 export function formatFieldValue(value: unknown, aggregationType?: string): string {
   if (value === null || value === undefined) return 'N/A';
   
-  // Handle arrays
   if (Array.isArray(value)) {
     if (value.length === 0) return 'Empty array';
     
-    // If aggregation is specified, apply it
     if (aggregationType) {
       const processed = processFieldSelection(value, '', aggregationType);
       return processed.displayValue;
     }
     
-    // Default array formatting
     if (value.every(item => typeof item !== 'object')) {
-      // Array of primitives
       const preview = value.slice(0, 3).map(item => String(item));
       return preview.join(', ') + (value.length > 3 ? `... (${value.length} total)` : '');
     } else {
-      // Array of objects
       return `Array of ${value.length} objects`;
     }
   }
   
-  // Handle simple values
   if (typeof value === 'string') return `"${value}"`;
   if (typeof value === 'number') return value.toString();
   if (typeof value === 'boolean') return value.toString();
   
-  // Handle objects
   if (typeof value === 'object') {
     const obj = value as Record<string, unknown>;
     const keys = Object.keys(obj);
     
     if (keys.length === 0) return 'Empty object';
     
-    // Show first few key-value pairs
     const pairs = keys.slice(0, 2).map(key => {
       const val = obj[key];
       if (typeof val === 'object') {
@@ -124,9 +97,6 @@ export function formatFieldValue(value: unknown, aggregationType?: string): stri
   return String(value);
 }
 
-/**
- * Enhanced value formatting for widgets with aggregation support
- */
 export function formatValueForWidget(
   value: unknown, 
   fieldPath: string, 
@@ -136,9 +106,6 @@ export function formatValueForWidget(
   return processed.displayValue;
 }
 
-/**
- * Auto-generate display name from field name
- */
 export function generateDisplayName(fieldName: string): string {
   return fieldName
     .replace(/_/g, ' ')
@@ -149,23 +116,29 @@ export function generateDisplayName(fieldName: string): string {
     .join(' ');
 }
 
-/**
- * Get meaningful fields by filtering out common system fields
- * Updated to support nested fields from the new tree-based system
- */
 export function getMeaningfulFields(fields: string[], limit = 8): string[] {
   return fields
     .filter(field => {
       const fieldLower = field.toLowerCase();
-      // Filter out system fields but allow nested fields
       const isSystemField = ['_id', '__v', 'updated_at', 'created_at'].some(sys => 
         fieldLower.includes(sys)
       );
-      // Also filter out timestamp fields that are not in arrays
       const isTimestampField = (fieldLower.includes('timestamp') || fieldLower.includes('date') || fieldLower.includes('time')) 
-        && !field.includes('[]'); // Allow array timestamps
+        && !field.includes('[]');
       
       return !isSystemField && !isTimestampField;
     })
     .slice(0, limit);
+}
+
+export function formatRefreshInterval(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds}s refresh`;
+  } else if (seconds < 3600) {
+    const minutes = Math.round(seconds / 60);
+    return `${minutes}min refresh`;
+  } else {
+    const hours = Math.round(seconds / 3600);
+    return `${hours}h refresh`;
+  }
 }

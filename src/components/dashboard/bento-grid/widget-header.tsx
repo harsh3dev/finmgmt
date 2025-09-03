@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Clock, GripVertical } from "lucide-react";
 import { Widget, ApiResponse } from "@/types/widget";
+import { formatRefreshInterval } from "@/lib/utils";
 import { WidgetActions } from "./widget-actions";
 
 interface WidgetHeaderProps {
@@ -58,7 +59,7 @@ export function WidgetHeader({
               )}
             </CardTitle>
             <CardDescription className="text-sm">
-              {widget.displayType} • {widget.refreshInterval}s refresh
+              {widget.displayType} • {formatRefreshInterval(widget.refreshInterval)}
             </CardDescription>
           </div>
           <WidgetActions

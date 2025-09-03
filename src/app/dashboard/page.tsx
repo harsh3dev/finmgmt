@@ -21,7 +21,8 @@ import { DashboardTabs } from "@/components/dashboard/dashboard-tabs";
 import { ImportedContentTab } from "@/components/dashboard/imported-content-tab";
 import { ExportButton } from "@/components/dashboard/export-button";
 import { ImportButton } from "@/components/dashboard/import-button";
-import { Plus, Database, AlertTriangle } from "lucide-react";
+import { TemplateGallery } from "@/components/dashboard/template-gallery";
+import { Plus, Database, AlertTriangle, Sparkles } from "lucide-react";
 import { 
   type CreateWidgetInput, 
   type CreateApiEndpointInput, 
@@ -29,8 +30,10 @@ import {
 } from "@/lib/validation";
 import { removeImportGroup } from "@/lib/import-tracker";
 import { exportDashboard } from "@/lib/dashboard-export";
+import { applyTemplate } from "@/lib/template-manager";
 import type { Widget, ApiEndpoint, DashboardTab } from "@/types/widget";
 import type { ImportedContent } from "@/types/imported-content";
+import type { DashboardTemplate } from "@/types/template";
 
 export default function DashboardPage() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -52,6 +55,8 @@ export default function DashboardPage() {
   
   const [activeTab, setActiveTab] = useState<DashboardTab>('widgets');
   const [importedContent, setImportedContent] = useState<ImportedContent[]>([]);
+  
+  const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState(false);
 
   useEffect(() => {
     const savedWidgets = localStorage.getItem('finance-dashboard-widgets');
@@ -106,7 +111,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Save to localStorage whenever state changes
   useEffect(() => {
     localStorage.setItem('finance-dashboard-widgets', JSON.stringify(widgets));
   }, [widgets]);
@@ -131,7 +135,7 @@ export default function DashboardPage() {
         apiKey: newApiEndpoint.apiKey,
         description: newApiEndpoint.description,
         category: newApiEndpoint.category,
-        sampleResponse: newApiEndpoint.sampleResponse as Record<string, unknown> | unknown[] | null | undefined, // Store sample response for future field selection
+        sampleResponse: newApiEndpoint.sampleResponse as Record<string, unknown> | unknown[] | null | undefined,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -218,7 +222,7 @@ export default function DashboardPage() {
       apiKey: apiData.apiKey,
       description: apiData.description,
       category: apiData.category,
-      sampleResponse: apiData.sampleResponse as Record<string, unknown> | unknown[] | null | undefined, // Store sample response for future field selection
+      sampleResponse: apiData.sampleResponse as Record<string, unknown> | unknown[] | null | undefined,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -313,6 +317,53 @@ export default function DashboardPage() {
     });
   };
 
+  const handleOpenTemplateGallery = () => {
+    setIsTemplateGalleryOpen(true);
+  };
+
+  const handleCloseTemplateGallery = () => {
+    setIsTemplateGalleryOpen(false);
+  };
+
+  const handleSelectTemplate = async (template: DashboardTemplate) => {
+    setIsTemplateGalleryOpen(false);
+    
+    try {
+      const result = await applyTemplate(template);
+      
+      if (result.success) {
+        setWidgets(prev => [...prev, ...result.widgets]);
+        setApiEndpoints(prev => [...prev, ...result.apiEndpoints]);
+        
+        const newWidgets = [...widgets, ...result.widgets];
+        const newApiEndpoints = [...apiEndpoints, ...result.apiEndpoints];
+        
+        localStorage.setItem('finance-dashboard-widgets', JSON.stringify(newWidgets));
+        localStorage.setItem('finance-dashboard-apis', JSON.stringify(newApiEndpoints));
+        
+        setWarningDialog({
+          isOpen: true,
+          title: "Template Applied Successfully",
+          message: `${template.name} has been added to your dashboard with ${result.widgets.length} widgets and ${result.apiEndpoints.length} API endpoints.`
+        });
+        
+      } else {
+        setWarningDialog({
+          isOpen: true,
+          title: "Template Application Failed",
+          message: result.error || "Failed to apply the template. Please try again."
+        });
+      }
+    } catch (error) {
+      console.error('Failed to apply template:', error);
+      setWarningDialog({
+        isOpen: true,
+        title: "Template Application Failed",
+        message: "An unexpected error occurred while applying the template."
+      });
+    }
+  };
+
   const userWidgets = widgets.filter(w => !w.isImported);
   const userApiEndpoints = apiEndpoints.filter(a => !a.isImported);
   const importedWidgets = widgets.filter(w => w.isImported);
@@ -321,26 +372,33 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b sticky top-0 z-40 backdrop-blur-sm bg-card/95">
-        <div className="container mx-auto px-4 py-4 max-w-7xl">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-              <h1 className="text-xl sm:text-2xl font-bold">Finance Dashboard</h1>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto">
-              {/* Import/Export Buttons */}
-              <div className="flex items-center space-x-2">
-                <ImportButton
-                  onImportSuccess={handleImportSuccess}
-                  onSwitchToImportedTab={handleSwitchToImportedTab}
-                  size="sm"
-                />
-                <ExportButton
-                  widgets={widgets}
-                  apiEndpoints={apiEndpoints}
-                  size="sm"
-                />
+          <div className="container mx-auto px-4 py-4 max-w-7xl">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <h1 className="text-xl sm:text-2xl font-bold">Finance Dashboard</h1>
               </div>
-              
+              <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto">
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={handleOpenTemplateGallery}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    <span className="hidden sm:inline">Templates</span>
+                  </Button>
+                  <ImportButton
+                    onImportSuccess={handleImportSuccess}
+                    onSwitchToImportedTab={handleSwitchToImportedTab}
+                    size="sm"
+                  />
+                  <ExportButton
+                    widgets={widgets}
+                    apiEndpoints={apiEndpoints}
+                    size="sm"
+                  />
+                </div>
               {activeTab === 'widgets' && (
                 <Button 
                   onClick={() => setIsAddWidgetModalOpen(true)}
@@ -366,7 +424,6 @@ export default function DashboardPage() {
           </div>
         </div>
         
-        {/* Tab Navigation */}
         <div className="container mx-auto px-4 max-w-7xl">
           <DashboardTabs
             activeTab={activeTab}
@@ -379,7 +436,6 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-6 max-w-8xl">
         {activeTab === 'widgets' && (
           <div className="space-y-6">
@@ -443,7 +499,6 @@ export default function DashboardPage() {
             onDeleteWidget={handleRemoveWidget}
             onDeleteApi={handleDeleteApiEndpoint}
             onUpdateWidgetOrder={(widgets) => {
-              // Update only imported widgets in the widget list
               setWidgets(prev => [
                 ...prev.filter(w => !w.isImported),
                 ...widgets
@@ -455,7 +510,6 @@ export default function DashboardPage() {
         )}
       </main>
 
-      {/* Modals */}
       <AddWidgetModal
         isOpen={isAddWidgetModalOpen}
         onClose={() => setIsAddWidgetModalOpen(false)}
@@ -479,7 +533,6 @@ export default function DashboardPage() {
         onSubmit={handleUpdateWidgetConfig}
       />
 
-      {/* Warning Dialog */}
       <Dialog open={warningDialog.isOpen} onOpenChange={(open) => !open && setWarningDialog(prev => ({ ...prev, isOpen: false }))}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -501,6 +554,12 @@ export default function DashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TemplateGallery
+        isOpen={isTemplateGalleryOpen}
+        onClose={handleCloseTemplateGallery}
+        onSelectTemplate={handleSelectTemplate}
+      />
     </div>
   );
 }

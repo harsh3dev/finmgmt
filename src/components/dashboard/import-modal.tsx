@@ -202,7 +202,7 @@ export function ImportModal({
         )}
 
         {currentStep === 'preview' && importData && (
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
             <ImportPreview 
               importData={importData}
               onImport={handleImport}

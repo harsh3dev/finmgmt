@@ -13,14 +13,11 @@ import {
 } from "lucide-react";
 import type { Widget } from "@/types/widget";
 
-/**
- * Helper function to get nested object value by dot notation with array support
- */
 export const getNestedValue = (obj: unknown, path: string): unknown => {
   if (!obj || !path) return null;
   
-  const pathParts = path.split('.');
   let current: unknown = obj;
+  const pathParts = path.split('.');
   
   for (let i = 0; i < pathParts.length; i++) {
     const part = pathParts[i];
@@ -28,36 +25,57 @@ export const getNestedValue = (obj: unknown, path: string): unknown => {
     if (current === null || current === undefined) return null;
     
     if (Array.isArray(current)) {
-      // Handle array access patterns
-      if (part === '[]' || part === '*') {
-        // Skip this part and continue with the array
-        continue;
-      } else {
-        // We're accessing a property from array items
-        // Get the remaining path after this part
-        const remainingPath = pathParts.slice(i).join('.');
-        
-        // Map over array items and recursively get the value
-        const results = current.map(item => {
-          if (item && typeof item === 'object') {
-            return getNestedValue(item, remainingPath);
-          }
+      if (/^\d+$/.test(part)) {
+        const index = parseInt(part, 10);
+        if (index >= 0 && index < current.length) {
+          current = current[index];
+          continue;
+        } else {
           return null;
-        }).filter(v => v !== null && v !== undefined);
-        
-        // If all results are the same primitive value, return the first one
-        // Otherwise return the array of results
-        if (results.length > 0) {
-          const firstResult = results[0];
-          if (typeof firstResult !== 'object' && results.every(r => r === firstResult)) {
-            return firstResult;
-          }
-          return results;
+        }
+      }
+      
+      if (part === '[]' || part === '*') {
+        continue;
+      } 
+      
+      const remainingPath = pathParts.slice(i).join('.');
+      const results = current.map(item => {
+        if (item && typeof item === 'object') {
+          return getNestedValue(item, remainingPath);
         }
         return null;
+      }).filter(v => v !== null && v !== undefined);
+      
+      if (results.length > 0) {
+        const firstResult = results[0];
+        if (typeof firstResult !== 'object' && results.every(r => r === firstResult)) {
+          return firstResult;
+        }
+        return results;
       }
+      return null;
     } else if (typeof current === 'object' && current !== null) {
-      current = (current as Record<string, unknown>)[part];
+      const currentObj = current as Record<string, unknown>;
+      
+      if (part in currentObj) {
+        current = currentObj[part];
+      } else {
+        let found = false;
+        for (let j = i; j < pathParts.length; j++) {
+          const compoundKey = pathParts.slice(i, j + 1).join('.');
+          if (compoundKey in currentObj) {
+            current = currentObj[compoundKey];
+            i = j;
+            found = true;
+            break;
+          }
+        }
+        
+        if (!found) {
+          return null;
+        }
+      }
     } else {
       return null;
     }
@@ -66,21 +84,16 @@ export const getNestedValue = (obj: unknown, path: string): unknown => {
   return current;
 };
 
-/**
- * Format values with smart type detection
- */
 export const formatSmartValue = (value: unknown): React.ReactNode => {
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground italic">N/A</span>;
   }
 
-  // Handle arrays
   if (Array.isArray(value)) {
     if (value.length === 0) {
       return <span className="text-muted-foreground italic">Empty array</span>;
     }
 
-    // Show array summary based on content type
     const firstItem = value[0];
     
     if (typeof firstItem === 'number') {
@@ -127,7 +140,6 @@ export const formatSmartValue = (value: unknown): React.ReactNode => {
       );
     }
 
-    // Array of objects
     if (typeof firstItem === 'object' && firstItem !== null) {
       const keys = Object.keys(firstItem as Record<string, unknown>);
       return (
@@ -151,9 +163,7 @@ export const formatSmartValue = (value: unknown): React.ReactNode => {
     );
   }
 
-  // Handle different data types
   if (typeof value === 'number') {
-    // Auto-detect financial data patterns
     const isFinancial = value > 0 && (value < 1 || value > 100 || value.toString().includes('.'));
     const isPercentage = value >= 0 && value <= 1;
     
@@ -182,7 +192,6 @@ export const formatSmartValue = (value: unknown): React.ReactNode => {
       );
     }
 
-    // Regular number formatting
     const formatted = value.toLocaleString();
     return (
       <div className="flex items-center gap-2">
@@ -211,7 +220,6 @@ export const formatSmartValue = (value: unknown): React.ReactNode => {
   }
 
   if (typeof value === 'string') {
-    // Auto-detect date strings
     const dateRegex = /^\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2}-\d{1,2}-\d{4}/;
     if (dateRegex.test(value)) {
       const date = new Date(value);
@@ -225,7 +233,6 @@ export const formatSmartValue = (value: unknown): React.ReactNode => {
       }
     }
 
-    // Auto-detect URLs
     const urlRegex = /^https?:\/\//;
     if (urlRegex.test(value)) {
       return (
@@ -240,11 +247,9 @@ export const formatSmartValue = (value: unknown): React.ReactNode => {
       );
     }
 
-    // Regular string
     return <span className="break-words">{value}</span>;
   }
 
-  // Handle objects
   if (typeof value === 'object' && value !== null) {
     const obj = value as Record<string, unknown>;
     const keys = Object.keys(obj);
@@ -253,7 +258,6 @@ export const formatSmartValue = (value: unknown): React.ReactNode => {
       return <span className="text-muted-foreground italic">Empty object</span>;
     }
 
-    // Show first few key-value pairs
     const pairs = keys.slice(0, 3).map(key => {
       const val = obj[key];
       let displayVal: string;
@@ -287,9 +291,6 @@ export const formatSmartValue = (value: unknown): React.ReactNode => {
   return <span>{String(value)}</span>;
 };
 
-/**
- * Render single object as card view
- */
 export const renderCardView = (
   widget: Widget, 
   data: unknown,
@@ -340,9 +341,6 @@ export const renderCardView = (
   );
 };
 
-/**
- * Render array of objects as table view
- */
 export const renderTableView = (
   widget: Widget, 
   data: unknown,
@@ -362,13 +360,12 @@ export const renderTableView = (
 
   const firstItem = data[0];
   if (typeof firstItem !== 'object' || firstItem === null) {
-    // Array of primitives - render as list
     return renderListView(widget, data, compact);
   }
 
   const headers = Object.keys(firstItem as Record<string, unknown>);
-  const displayHeaders = headers.slice(0, compact ? 4 : 6); // Limit columns for readability
-  const maxRows = compact ? 4 : 10; // Limit rows for performance
+  const displayHeaders = headers.slice(0, compact ? 4 : 6);
+  const maxRows = compact ? 4 : 10;
 
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
@@ -423,9 +420,6 @@ export const renderTableView = (
   );
 };
 
-/**
- * Render array of primitives as list view
- */
 export const renderListView = (
   widget: Widget, 
   data: unknown,
@@ -480,9 +474,6 @@ export const renderListView = (
   );
 };
 
-/**
- * Render chart placeholder with detected numeric fields
- */
 export const renderChartView = (
   widget: Widget, 
   data: unknown,

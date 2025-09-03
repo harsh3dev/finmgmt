@@ -133,12 +133,9 @@ export function ApiForm({ onSubmit, onBack }: ApiFormProps) {
       return;
     }
     
-    // Submit the form with sample response for caching
+    // Submit the form
     onSubmit(
-      {
-        ...validation.data,
-        sampleResponse: fieldSelection.fieldSelection.responseData
-      }, 
+      validation.data, 
       fieldSelection.fieldSelection.selectedFields, 
       fieldSelection.fieldSelection.fieldMappings
     );
