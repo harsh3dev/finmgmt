@@ -1,66 +1,37 @@
 'use client'
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react'
-import { NavigationState, NavigationAction } from '@/types/navigation'
+import React, { createContext, useContext, useEffect, useCallback, useMemo } from 'react'
+import { useAppDispatch, useAppSelector } from '@/hooks/redux'
+import { 
+  toggleSidebar as toggleSidebarAction,
+  setSidebarCollapsed as setSidebarCollapsedAction,
+  setActiveRoute,
+  setIsMobile,
+  toggleMobileNav as toggleMobileNavAction,
+  setMobileNavOpen as setMobileNavOpenAction
+} from '@/store/slices/navigationSlice'
 import { NAVIGATION_CONFIG } from '@/constants/navigation'
 
-const initialState: NavigationState = {
-  isCollapsed: false,
-  activeItem: '',
+// Extended state for section management (local to navigation provider)
+interface ExtendedNavigationState {
+  openSections: string[]
+}
+
+const initialExtendedState: ExtendedNavigationState = {
   openSections: NAVIGATION_CONFIG.sections
     .filter(section => section.defaultOpen)
     .map(section => section.id),
-  isMobileOpen: false
-}
-
-function navigationReducer(state: NavigationState, action: NavigationAction): NavigationState {
-  switch (action.type) {
-    case 'TOGGLE_COLLAPSE':
-      return {
-        ...state,
-        isCollapsed: !state.isCollapsed
-      }
-    
-    case 'SET_COLLAPSED':
-      return {
-        ...state,
-        isCollapsed: action.payload
-      }
-    
-    case 'SET_ACTIVE_ITEM':
-      return {
-        ...state,
-        activeItem: action.payload
-      }
-    
-    case 'TOGGLE_SECTION':
-      return {
-        ...state,
-        openSections: state.openSections.includes(action.payload)
-          ? state.openSections.filter(id => id !== action.payload)
-          : [...state.openSections, action.payload]
-      }
-    
-    case 'SET_MOBILE_OPEN':
-      return {
-        ...state,
-        isMobileOpen: action.payload
-      }
-    
-    case 'TOGGLE_MOBILE':
-      return {
-        ...state,
-        isMobileOpen: !state.isMobileOpen
-      }
-    
-    default:
-      return state
-  }
 }
 
 interface NavigationContextType {
-  state: NavigationState
-  dispatch: React.Dispatch<NavigationAction>
+  // Redux state
+  isCollapsed: boolean
+  activeItem: string
+  isMobileOpen: boolean
+  isMobile: boolean
+  // Local state
+  openSections: string[]
+  // Actions
   toggleSidebar: () => void
   setSidebarCollapsed: (collapsed: boolean) => void
   setActiveItem: (item: string) => void
@@ -76,45 +47,70 @@ interface NavigationProviderProps {
 }
 
 export function NavigationProvider({ children }: NavigationProviderProps) {
-  const [state, dispatch] = useReducer(navigationReducer, initialState)
+  const dispatch = useAppDispatch()
+  
+  // Get navigation state from Redux with comprehensive safety checks
+  const navigationState = useAppSelector(state => {
+    // Ensure state exists and has navigation property
+    if (!state || typeof state !== 'object' || !('navigation' in state)) {
+      console.warn('Navigation state not found in Redux store, using defaults');
+      return null;
+    }
+    return state.navigation;
+  });
+  
+  // Extract values with safe defaults
+  const sidebarCollapsed = navigationState?.sidebarCollapsed ?? false;
+  const activeRoute = navigationState?.activeRoute ?? '/dashboard';
+  const mobileNavOpen = navigationState?.mobileNavOpen ?? false;
+  const isMobile = navigationState?.isMobile ?? false;
+  
+  // Local state for sections
+  const [openSections, setOpenSections] = React.useState(initialExtendedState.openSections)
 
   const toggleSidebar = useCallback(() => {
-    dispatch({ type: 'TOGGLE_COLLAPSE' })
-  }, [])
+    dispatch(toggleSidebarAction())
+  }, [dispatch])
 
   const setSidebarCollapsed = useCallback((collapsed: boolean) => {
-    dispatch({ type: 'SET_COLLAPSED', payload: collapsed })
-  }, [])
+    dispatch(setSidebarCollapsedAction(collapsed))
+  }, [dispatch])
 
   const setActiveItem = useCallback((item: string) => {
-    dispatch({ type: 'SET_ACTIVE_ITEM', payload: item })
-  }, [])
+    dispatch(setActiveRoute(item))
+  }, [dispatch])
 
   const toggleSection = useCallback((sectionId: string) => {
-    dispatch({ type: 'TOGGLE_SECTION', payload: sectionId })
+    setOpenSections(prev => 
+      prev.includes(sectionId)
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId]
+    )
   }, [])
 
   const toggleMobileNav = useCallback(() => {
-    dispatch({ type: 'TOGGLE_MOBILE' })
-  }, [])
+    dispatch(toggleMobileNavAction())
+  }, [dispatch])
 
   const setMobileNavOpen = useCallback((open: boolean) => {
-    dispatch({ type: 'SET_MOBILE_OPEN', payload: open })
-  }, [])
+    dispatch(setMobileNavOpenAction(open))
+  }, [dispatch])
 
   useEffect(() => {
     const handleResize = () => {
-      const isMobile = window.innerWidth < 1024 // lg breakpoint
-      const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024 // md to lg
+      const isMobileView = window.innerWidth < 1024 // lg breakpoint
+      const isTabletView = window.innerWidth >= 768 && window.innerWidth < 1024 // md to lg
+      
+      dispatch(setIsMobile(isMobileView))
       
       // Close mobile nav on desktop
-      if (!isMobile && state.isMobileOpen) {
-        dispatch({ type: 'SET_MOBILE_OPEN', payload: false })
+      if (!isMobileView && mobileNavOpen) {
+        dispatch(setMobileNavOpenAction(false))
       }
       
       // Auto-collapse sidebar on tablet for better space utilization
-      if (isTablet && !state.isCollapsed) {
-        dispatch({ type: 'SET_COLLAPSED', payload: true })
+      if (isTabletView && !sidebarCollapsed) {
+        dispatch(setSidebarCollapsedAction(true))
       }
     }
 
@@ -134,22 +130,17 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
       window.removeEventListener('resize', debouncedResize)
       clearTimeout(timeoutId)
     }
-  }, [state.isMobileOpen, state.isCollapsed])
-
-  useEffect(() => {
-    const savedState = localStorage.getItem('sidebar-collapsed')
-    if (savedState !== null) {
-      dispatch({ type: 'SET_COLLAPSED', payload: JSON.parse(savedState) })
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem('sidebar-collapsed', JSON.stringify(state.isCollapsed))
-  }, [state.isCollapsed])
+  }, [dispatch, mobileNavOpen, sidebarCollapsed])
 
   const value: NavigationContextType = useMemo(() => ({
-    state,
-    dispatch,
+    // Redux state
+    isCollapsed: sidebarCollapsed,
+    activeItem: activeRoute,
+    isMobileOpen: mobileNavOpen,
+    isMobile,
+    // Local state
+    openSections,
+    // Actions
     toggleSidebar,
     setSidebarCollapsed,
     setActiveItem,
@@ -157,7 +148,11 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     toggleMobileNav,
     setMobileNavOpen
   }), [
-    state,
+    sidebarCollapsed,
+    activeRoute,
+    mobileNavOpen,
+    isMobile,
+    openSections,
     toggleSidebar,
     setSidebarCollapsed,
     setActiveItem,
@@ -173,10 +168,16 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   )
 }
 
-export function useNavigation() {
+export function useNavigation(): NavigationContextType {
   const context = useContext(NavigationContext)
   if (context === undefined) {
     throw new Error('useNavigation must be used within a NavigationProvider')
   }
+  
+  // Add additional safety check for context properties
+  if (typeof context.isCollapsed === 'undefined') {
+    console.warn('Navigation context isCollapsed is undefined, this might indicate a timing issue');
+  }
+  
   return context
 }
