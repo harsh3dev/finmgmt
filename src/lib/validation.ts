@@ -70,7 +70,6 @@ export const createWidgetSchema = z.object({
     selectedFields: z.array(z.string()),
     fieldMappings: z.record(z.string(), z.string()),
     formatSettings: z.object({
-      currency: z.string().optional(),
       decimalPlaces: z.number().min(0).max(10).optional(),
       dateFormat: z.string().optional(),
       numberFormat: z.enum(['default', 'compact', 'scientific']).optional(),
@@ -109,7 +108,6 @@ export const createWidgetWithoutApiSchema = z.object({
     selectedFields: z.array(z.string()),
     fieldMappings: z.record(z.string(), z.string()),
     formatSettings: z.object({
-      currency: z.string().optional(),
       decimalPlaces: z.number().min(0).max(10).optional(),
       dateFormat: z.string().optional(),
       numberFormat: z.enum(['default', 'compact', 'scientific']).optional(),
@@ -136,7 +134,6 @@ export const configureWidgetSchema = z.object({
   fieldMappings: z.record(z.string(), z.string()),
   
   formatSettings: z.object({
-    currency: z.string().optional(),
     decimalPlaces: z.number().min(0).max(10).optional(),
     dateFormat: z.string().optional(),
     numberFormat: z.enum(['default', 'compact', 'scientific']).optional(),

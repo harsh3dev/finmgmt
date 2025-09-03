@@ -152,10 +152,6 @@ export function TemplateDetailsModal({
                     <span className="text-muted-foreground">Position:</span>{' '}
                     {widget.position.width}×{widget.position.height}
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Format:</span>{' '}
-                    {widget.config.formatSettings?.currency || 'Default'}
-                  </div>
                 </div>
               </div>
             </CardContent>

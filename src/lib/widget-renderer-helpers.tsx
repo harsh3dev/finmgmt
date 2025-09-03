@@ -86,6 +86,7 @@ export const getNestedValue = (obj: unknown, path: string): unknown => {
   return current;
 };
 
+
 export const formatSmartValue = (value: unknown): React.ReactNode => {
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground italic">N/A</span>;
@@ -166,6 +167,7 @@ export const formatSmartValue = (value: unknown): React.ReactNode => {
   }
 
   if (typeof value === 'number') {
+    // Currency conversion path if widget requests it
     const isFinancial = value > 0 && (value < 1 || value > 100 || value.toString().includes('.'));
     const isPercentage = value >= 0 && value <= 1;
     

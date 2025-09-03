@@ -13,13 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+// (Currency select removed)
 import { 
   configureWidgetSchema, 
   validateFormData,
@@ -29,19 +23,7 @@ import type { ConfigureWidgetModalProps } from "@/types/widget";
 import { useFieldSelection } from "@/hooks/use-field-selection";
 import { TreeFieldSelection } from "./add-widget-modal/tree-field-selection";
 
-// Common currency codes
-const COMMON_CURRENCIES = [
-  { code: 'USD', name: 'US Dollar' },
-  { code: 'EUR', name: 'Euro' },
-  { code: 'GBP', name: 'British Pound' },
-  { code: 'JPY', name: 'Japanese Yen' },
-  { code: 'INR', name: 'Indian Rupee' },
-  { code: 'CAD', name: 'Canadian Dollar' },
-  { code: 'AUD', name: 'Australian Dollar' },
-  { code: 'CHF', name: 'Swiss Franc' },
-  { code: 'CNY', name: 'Chinese Yuan' },
-  { code: 'SGD', name: 'Singapore Dollar' }
-];
+// Currency conversion removed
 
 export function ConfigureWidgetModal({ 
   isOpen, 
@@ -208,34 +190,6 @@ export function ConfigureWidgetModal({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="currency">Currency</Label>
-                    <Select
-                      value={formData.formatSettings.currency || ""}
-                      onValueChange={(value) => setFormData((prev: ConfigureWidgetInput) => ({
-                        ...prev,
-                        formatSettings: {
-                          ...prev.formatSettings,
-                          currency: value
-                        }
-                      }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COMMON_CURRENCIES.map((currency) => (
-                          <SelectItem key={currency.code} value={currency.code}>
-                            {currency.code} - {currency.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Format numeric values as currency (applies to numbers and numeric strings)
-                    </p>
-                  </div>
-                  
                   <div className="grid gap-2">
                     <Label htmlFor="decimalPlaces">Decimal Places</Label>
                     <Input

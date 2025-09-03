@@ -33,7 +33,6 @@ export interface WidgetConfig {
 }
 
 export interface FormatSettings {
-  currency?: string;
   decimalPlaces?: number;
   dateFormat?: string;
   numberFormat?: 'default' | 'compact' | 'scientific';
