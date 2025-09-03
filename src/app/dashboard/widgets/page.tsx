@@ -21,13 +21,13 @@ import {
   type CreateApiEndpointInput, 
   type ConfigureWidgetInput 
 } from "@/lib/validation";
-import { useWidgets, useApiEndpoints } from "@/hooks/use-dashboard-data";
+import { useReduxWidgets, useReduxApiEndpoints } from "@/hooks/use-redux-dashboard";
 import type { Widget, ApiEndpoint } from "@/types/widget";
 import Link from "next/link";
 
 export default function WidgetsPage() {
-  const { widgets, addWidget, updateWidget, removeWidget, saveWidgets, loading: widgetsLoading, refresh: refreshWidgets } = useWidgets();
-  const { apiEndpoints, addApiEndpoint, loading: apisLoading } = useApiEndpoints();
+  const { widgets, addWidget, updateWidget, removeWidget, saveWidgets, loading: widgetsLoading, refresh: refreshWidgets } = useReduxWidgets();
+  const { apiEndpoints, addApiEndpoint, loading: apisLoading } = useReduxApiEndpoints();
   const [selectedWidget, setSelectedWidget] = useState<Widget | null>(null);
   
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
