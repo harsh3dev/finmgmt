@@ -98,6 +98,8 @@ export interface CreateWidgetForm {
 }
 
 export interface ConfigureWidgetForm {
+  // Optional name update for editing widget title
+  name?: string;
   selectedFields: string[];
   fieldMappings: Record<string, string>;
   formatSettings: Partial<FormatSettings>;

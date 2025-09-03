@@ -26,6 +26,8 @@ import {
   type ConfigureWidgetInput
 } from "@/lib/validation";
 import type { ConfigureWidgetModalProps } from "@/types/widget";
+import { useFieldSelection } from "@/hooks/use-field-selection";
+import { TreeFieldSelection } from "./add-widget-modal/tree-field-selection";
 
 // Common currency codes
 const COMMON_CURRENCIES = [
@@ -49,63 +51,58 @@ export function ConfigureWidgetModal({
   apiData 
 }: ConfigureWidgetModalProps) {
   const [formData, setFormData] = useState<ConfigureWidgetInput>({
+  name: '',
     selectedFields: [],
     fieldMappings: {},
     formatSettings: {},
     styling: {}
   });
 
-  const [availableFields, setAvailableFields] = useState<string[]>([]);
+  // Legacy simple field list retained if needed for fallback (currently not displayed when tree available)
+  // Removed state since tree handles selection; can reintroduce if fallback UI needed.
+  const fieldSelection = useFieldSelection();
 
   // Initialize form data when widget changes
   useEffect(() => {
     if (widget) {
-      setFormData({
+      const initial = {
+        name: widget.name,
         selectedFields: widget.config.selectedFields,
         fieldMappings: widget.config.fieldMappings,
         formatSettings: widget.config.formatSettings,
         styling: widget.config.styling
+      };
+      setFormData(initial);
+      // Initialize field selection tree state
+      fieldSelection.updateFieldSelection({
+        responseData: apiData || null,
+        selectedFields: widget.config.selectedFields,
+        fieldMappings: widget.config.fieldMappings,
       });
     }
-  }, [widget]);
+  // fieldSelection stable from hook; intentionally not adding to deps to avoid reset loops
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widget, apiData]);
 
-  // Extract available fields from API data
+  // Initialize response data for field tree if not already set
   useEffect(() => {
-    if (apiData) {
-      const fields = extractFieldsFromData(apiData);
-      setAvailableFields(fields);
+    if (apiData && !fieldSelection.fieldSelection.responseData) {
+      fieldSelection.updateFieldSelection({ responseData: apiData });
     }
-  }, [apiData]);
+  }, [apiData, fieldSelection.fieldSelection.responseData, fieldSelection]);
 
-  const extractFieldsFromData = (data: Record<string, unknown> | unknown[] | null): string[] => {
-    if (!data) return [];
-    
-    const fields: string[] = [];
-    
-    const extractFields = (obj: unknown, prefix = ""): void => {
-      if (typeof obj === "object" && obj !== null && !Array.isArray(obj)) {
-        const record = obj as Record<string, unknown>;
-        Object.keys(record).forEach(key => {
-          const fullKey = prefix ? `${prefix}.${key}` : key;
-          fields.push(fullKey);
-          
-          if (typeof record[key] === "object" && record[key] !== null && !Array.isArray(record[key])) {
-            extractFields(record[key], fullKey);
-          }
-        });
-      } else if (Array.isArray(obj) && obj.length > 0) {
-        extractFields(obj[0], prefix);
-      }
-    };
-    
-    extractFields(data);
-    return fields;
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const validation = validateFormData(configureWidgetSchema, formData);
+    // Merge tree-selected fields/mappings back into form data before validation
+    const mergedFormData: ConfigureWidgetInput = {
+      ...formData,
+      selectedFields: fieldSelection.fieldSelection.selectedFields,
+      fieldMappings: fieldSelection.fieldSelection.fieldMappings
+    };
+
+    const validation = validateFormData(configureWidgetSchema, mergedFormData);
     
     if (!validation.success) {
       // For now, log validation errors - could be displayed in UI later
@@ -113,30 +110,16 @@ export function ConfigureWidgetModal({
       return;
     }
 
-    onSubmit(validation.data);
+  onSubmit(validation.data);
   };
 
   const handleClose = () => {
     onClose();
   };
 
-  const toggleField = (field: string) => {
-    setFormData((prev: ConfigureWidgetInput) => ({
-      ...prev,
-      selectedFields: prev.selectedFields.includes(field)
-        ? prev.selectedFields.filter((f: string) => f !== field)
-        : [...prev.selectedFields, field]
-    }));
-  };
-
+  // Legacy update mapping through fieldSelection hook
   const updateFieldMapping = (field: string, displayName: string) => {
-    setFormData((prev: ConfigureWidgetInput) => ({
-      ...prev,
-      fieldMappings: {
-        ...prev.fieldMappings,
-        [field]: displayName
-      }
-    }));
+    fieldSelection.updateFieldMapping(field, displayName);
   };
 
   if (!widget) return null;
@@ -153,46 +136,43 @@ export function ConfigureWidgetModal({
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid gap-6 py-4">
-            {/* Field Selection */}
+            {/* Widget Title */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Field Selection</CardTitle>
-                <CardDescription>
-                  Choose which fields from the API response to display in your widget.
-                </CardDescription>
+                <CardTitle className="text-lg">Widget Title</CardTitle>
+                <CardDescription>Update the display title for this widget.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {availableFields.length > 0 ? (
-                  <div className="grid gap-2 max-h-60 overflow-y-auto">
-                    {availableFields.map((field: string) => (
-                      <div key={field} className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          id={`field-${field}`}
-                          checked={formData.selectedFields.includes(field)}
-                          onChange={() => toggleField(field)}
-                          className="rounded border"
-                        />
-                        <Label 
-                          htmlFor={`field-${field}`}
-                          className="flex-1 cursor-pointer"
-                        >
-                          {field}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No API data available for field selection.</p>
-                    <p className="text-sm">Make sure the API endpoint is accessible and returns data.</p>
-                  </div>
-                )}
+              <CardContent>
+                <div className="grid gap-2">
+                  <Label htmlFor="widget-name">Title</Label>
+                  <Input
+                    id="widget-name"
+                    value={formData.name || ''}
+                    placeholder="Enter widget title"
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
               </CardContent>
             </Card>
+            {/* Field Selection (Tree) */}
+            {apiData ? (
+              <TreeFieldSelection fieldSelection={fieldSelection} />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Field Selection</CardTitle>
+                  <CardDescription>
+                    API data unavailable. Once data is loaded you can select fields.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">No API data to build field tree.</p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Field Mappings */}
-            {formData.selectedFields.length > 0 && (
+    {fieldSelection.fieldSelection.selectedFields.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Field Display Names</CardTitle>
@@ -201,7 +181,7 @@ export function ConfigureWidgetModal({
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {formData.selectedFields.map((field: string) => (
+      {fieldSelection.fieldSelection.selectedFields.map((field: string) => (
                     <div key={field} className="grid gap-2">
                       <Label htmlFor={`mapping-${field}`}>
                         {field}
@@ -209,7 +189,7 @@ export function ConfigureWidgetModal({
                       <Input
                         id={`mapping-${field}`}
                         placeholder={`Display name for ${field}`}
-                        value={formData.fieldMappings[field] || ""}
+        value={fieldSelection.fieldSelection.fieldMappings[field] || ""}
                         onChange={(e) => updateFieldMapping(field, e.target.value)}
                       />
                     </div>

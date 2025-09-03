@@ -89,11 +89,10 @@ export function BentoGrid({
               const isExpanded = expandedWidget === widget.id;
               // Dynamic width scaling (relative ratios: card=1x, chart=2x, table=3x)
               // Grid columns: xl=3, 2xl=4. For xl (3 cols) table spans full row, chart spans 2.
-              const spanClass = widget.displayType === 'table'
-                ? 'xl:col-span-12 2xl:col-span-12'
-                : widget.displayType === 'chart'
-                  ? 'xl:col-span-8 2xl:col-span-8'
-                  : 'xl:col-span-4 2xl:col-span-4';
+              // Align table size with chart size (both medium width), cards remain smaller
+              const spanClass = widget.displayType === 'table' || widget.displayType === 'chart'
+                ? 'xl:col-span-8 2xl:col-span-8'
+                : 'xl:col-span-4 2xl:col-span-4';
               
               return (
                 <SortableWidget

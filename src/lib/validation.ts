@@ -127,6 +127,10 @@ export const createWidgetWithoutApiSchema = z.object({
 export type CreateWidgetInput = z.infer<typeof createWidgetSchema>;
 
 export const configureWidgetSchema = z.object({
+  name: z.string()
+    .min(1, 'Widget name is required')
+    .max(100, 'Widget name must be less than 100 characters')
+    .optional(),
   selectedFields: z.array(z.string()),
   
   fieldMappings: z.record(z.string(), z.string()),

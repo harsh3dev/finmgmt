@@ -201,6 +201,7 @@ export default function DashboardPage() {
       widget.id === selectedWidget.id 
         ? {
             ...widget,
+            ...(config.name ? { name: config.name } : {}),
             config: {
               selectedFields: config.selectedFields,
               fieldMappings: config.fieldMappings,

@@ -207,9 +207,8 @@ export function WidgetGrid({ widgets, apiEndpoints, onConfigureWidget, onRemoveW
         const isManualRefreshing = manualRefreshStates[widget.id] || false;
         const isRefreshing = data.status === 'loading' || isManualRefreshing;
         let spanClass: string;
-        if (widget.displayType === 'table') {
-          spanClass = 'sm:col-span-2 lg:col-span-3 xl:col-span-6';
-        } else if (widget.displayType === 'chart') {
+        if (widget.displayType === 'table' || widget.displayType === 'chart') {
+          // Make table same width as chart (medium) while keeping cards small
           spanClass = 'sm:col-span-2 lg:col-span-2 xl:col-span-4';
         } else {
           spanClass = 'sm:col-span-1 lg:col-span-1 xl:col-span-2';
