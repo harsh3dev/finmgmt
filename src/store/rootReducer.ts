@@ -4,6 +4,7 @@ import navigationSlice from './slices/navigationSlice';
 import uiSlice from './slices/uiSlice';
 import widgetsSlice from './slices/widgetsSlice';
 import apiEndpointsSlice from './slices/apiEndpointsSlice';
+import liveTradesSlice from './slices/liveTradesSlice';
 
 const rootReducer = combineReducers({
   apiKeys: apiKeySlice,
@@ -11,6 +12,7 @@ const rootReducer = combineReducers({
   ui: uiSlice,
   widgets: widgetsSlice,
   apiEndpoints: apiEndpointsSlice,
+  liveTrades: liveTradesSlice,
 });
 
 export default rootReducer;

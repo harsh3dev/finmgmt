@@ -34,6 +34,14 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
           icon: Grid3X3,
           description: 'Manage and configure widgets'
         }
+        ,
+        {
+          id: 'live-trades',
+          label: 'Live Trades',
+          href: '/dashboard/live',
+          icon: BarChart3,
+          description: 'Real-time trade stream (MVP)'
+        }
       ],
       defaultOpen: true
     },
@@ -97,6 +105,7 @@ export const ROUTES = {
   IMPORTED: '/dashboard/imported',
   API_KEYS: '/dashboard/api-keys',
   TEMPLATES: '/dashboard/templates'
+  , LIVE: '/dashboard/live'
 } as const
 
 // Navigation icons mapping for dynamic rendering

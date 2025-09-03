@@ -8,7 +8,17 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // Ignore these action types for non-serializable values
+        // Allow Date instances (we intentionally store Date objects in state)
+        isSerializable: (value: unknown) => {
+          if (value instanceof Date) return true;
+          // basic default: accept primitives & plain objects/arrays
+          return (
+            value === null ||
+            ['string','number','boolean','undefined'].includes(typeof value) ||
+            Array.isArray(value) ||
+            (typeof value === 'object')
+          );
+        },
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
     })
