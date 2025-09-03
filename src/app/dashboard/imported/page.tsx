@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -21,9 +21,10 @@ import {
   type ConfigureWidgetInput 
 } from "@/lib/validation";
 import { removeImportGroup } from "@/lib/import-tracker";
-import { secureStorageService } from "@/lib/secure-storage";
 import { exportDashboard } from "@/lib/dashboard-export";
+import { dashboardStorage } from "@/lib/dashboard-storage";
 import type { Widget, ApiEndpoint } from "@/types/widget";
+import { useReduxWidgets } from "@/hooks/use-redux-widgets";
 import type { ImportedContent } from "@/types/imported-content";
 import Link from "next/link";
 
@@ -44,62 +45,61 @@ export default function ImportedPage() {
     message: ''
   });
 
-  useEffect(() => {
-    const savedWidgets = localStorage.getItem('finance-dashboard-widgets');
-    const savedApiEndpoints = localStorage.getItem('finance-dashboard-apis');
-    const savedImportedContent = localStorage.getItem('finance-dashboard-imports');
-    
-    if (savedWidgets) {
-      try {
-        const parsedWidgets = JSON.parse(savedWidgets);
-        setWidgets(parsedWidgets);
-      } catch (error) {
-        console.error('Error loading widgets:', error);
-      }
-    }
-    
-    if (savedApiEndpoints) {
-      try {
-        const parsedApiEndpoints = JSON.parse(savedApiEndpoints);
-        setApiEndpoints(parsedApiEndpoints);
-      } catch (error) {
-        console.error('Error loading API endpoints:', error);
-      }
-    } else {
-      secureStorageService.getApiEndpoints().then(secureEndpoints => {
-        if (secureEndpoints.length > 0) {
-          setApiEndpoints(secureEndpoints);
-        }
-      }).catch(error => {
-        console.error('Error loading secure API endpoints:', error);
-      });
-    }
+  // --- Normalization helpers ---
+  const normalizeWidget = (w: Widget): Widget => ({
+    ...w,
+    createdAt: new Date(w.createdAt),
+    updatedAt: new Date(w.updatedAt),
+    importDate: w.importDate ? new Date(w.importDate) : undefined
+  });
+  const normalizeApi = (a: ApiEndpoint): ApiEndpoint => ({
+    ...a,
+    createdAt: new Date(a.createdAt),
+    updatedAt: new Date(a.updatedAt),
+    importDate: a.importDate ? new Date(a.importDate) : undefined
+  });
+  const normalizeImportSession = (s: ImportedContent): ImportedContent => ({
+    ...s,
+    importDate: new Date(s.importDate)
+  });
 
-    if (savedImportedContent) {
-      try {
-        setImportedContent(JSON.parse(savedImportedContent));
-      } catch (error) {
-        console.error('Error loading imported content:', error);
-        setImportedContent([]);
+  const loadAll = useCallback(async () => {
+    try {
+      const { widgets: w, apiEndpoints: apis, importedContent: imports } = await dashboardStorage.getAllData();
+      const normalizedWidgets = w.map(normalizeWidget);
+      const normalizedApis = apis.map(normalizeApi);
+      const normalizedImports = imports.map(normalizeImportSession);
+
+      setWidgets(normalizedWidgets);
+      setApiEndpoints(normalizedApis);
+      setImportedContent(normalizedImports);
+
+      // If import sessions exist but none of their widgets are found, try raw reload (fallback)
+      if (normalizedImports.length > 0 && !normalizedWidgets.some(w => w.isImported)) {
+        const rawWidgets = JSON.parse(localStorage.getItem('finance-dashboard-widgets') || '[]');
+        if (rawWidgets.some((rw: Widget) => rw.isImported)) {
+          setWidgets(rawWidgets.map(normalizeWidget));
+        }
       }
-    } else {
-      setImportedContent([]);
+    } catch (e) {
+      console.error('Failed to load dashboard storage', e);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('finance-dashboard-widgets', JSON.stringify(widgets));
-  }, [widgets]);
-
-  useEffect(() => {
-    secureStorageService.saveApiEndpoints(apiEndpoints).catch(error => {
-      console.error('Error saving API endpoints:', error);
-    });
-  }, [apiEndpoints]);
-
-  useEffect(() => {
-    localStorage.setItem('finance-dashboard-imports', JSON.stringify(importedContent));
-  }, [importedContent]);
+    loadAll();
+    // Subscribe to storage changes for live sync
+  // Access static events safely
+  const events = (dashboardStorage.constructor as typeof dashboardStorage.constructor & { events: Record<string,string> }).events;
+  const unsubWidgets = dashboardStorage.subscribe(events.widgetsChanged, loadAll);
+  const unsubApis = dashboardStorage.subscribe(events.apisChanged, loadAll);
+  const unsubImports = dashboardStorage.subscribe(events.importsChanged, loadAll);
+    return () => {
+      unsubWidgets();
+      unsubApis();
+      unsubImports();
+    };
+  }, [loadAll]);
 
   const handleConfigureWidget = (widget: Widget) => {
     setSelectedWidget(widget);
@@ -130,7 +130,9 @@ export default function ImportedPage() {
   };
 
   const handleRemoveWidget = (widgetId: string) => {
-    setWidgets(prev => prev.filter(widget => widget.id !== widgetId));
+  setWidgets(prev => prev.filter(widget => widget.id !== widgetId));
+  // Persist removal
+  dashboardStorage.removeWidget(widgetId).catch(err => console.error('Persist remove widget failed', err));
   };
 
   const handleDeleteApiEndpoint = (apiId: string) => {
@@ -148,7 +150,8 @@ export default function ImportedPage() {
       return;
     }
 
-    setApiEndpoints(prev => prev.filter(api => api.id !== apiId));
+  setApiEndpoints(prev => prev.filter(api => api.id !== apiId));
+  dashboardStorage.removeApiEndpoint(apiId).catch(err => console.error('Persist remove api failed', err));
   };
 
   const handleImportSuccess = (importedWidgets: Widget[], importedApiEndpoints: ApiEndpoint[]) => {
@@ -163,6 +166,8 @@ export default function ImportedPage() {
       setApiEndpoints(prev => prev.filter(a => !result.removedApiEndpoints.includes(a.id)));
       
       setImportedContent(prev => prev.filter(session => session.importId !== importId));
+  // Persist updated imports list
+  dashboardStorage.saveImportedContent(importedContent.filter(s => s.importId !== importId)).catch(err => console.error('Persist imports failed', err));
     } else {
       setWarningDialog({
         isOpen: true,
@@ -217,6 +222,46 @@ export default function ImportedPage() {
 
   const importedWidgets = widgets.filter(w => w.isImported);
   const importedApiEndpoints = apiEndpoints.filter(a => a.isImported);
+
+  // Access redux to update central widget store
+  const { updateWidget: updateReduxWidget, refresh: refreshReduxWidgets } = useReduxWidgets();
+
+  const handlePromoteImportedWidget = async (widget: Widget) => {
+    try {
+      // Update redux/storage representation
+      await updateReduxWidget(widget.id, {
+        isImported: false,
+        importId: undefined,
+        importSource: undefined,
+        importDate: undefined,
+        updatedAt: new Date()
+      } as Partial<Widget>);
+
+      // Update local page state so it disappears from imported list
+      setWidgets(prev => prev.map(w => w.id === widget.id ? ({
+        ...w,
+        isImported: false,
+        importId: undefined,
+        importSource: undefined,
+        importDate: undefined,
+        updatedAt: new Date()
+      }) : w));
+
+      // Optionally refresh redux cache
+      refreshReduxWidgets();
+      // Persist promotion: save entire widget list
+      dashboardStorage.saveWidgets(
+        (await dashboardStorage.getWidgets()).map(normalizeWidget)
+      ).catch(err => console.error('Persist promote failed', err));
+    } catch (e) {
+      console.error('Failed to promote imported widget', e);
+      setWarningDialog({
+        isOpen: true,
+        title: 'Promotion Failed',
+        message: 'Could not move widget to Widgets tab. Please try again.'
+      });
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -459,6 +504,7 @@ export default function ImportedPage() {
               }}
               onDeleteImportSession={handleDeleteImportSession}
               onBulkExportImportSession={handleBulkExportImportSession}
+              onPromoteImportedWidget={handlePromoteImportedWidget}
             />
           </div>
         )}

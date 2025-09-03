@@ -1,11 +1,139 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Key, Plus, Shield, AlertTriangle } from "lucide-react";
+import { ApiKeyList } from "@/components/api-keys/api-key-list";
+import { ApiKeyModal } from "@/components/api-keys/api-key-modal";
+import { Key, Plus, Info, RefreshCw } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "@/hooks/redux";
+import { 
+  loadApiKeys, 
+  addApiKey, 
+  updateApiKey, 
+  deleteApiKey, 
+  setDefaultApiKey,
+  selectApiKeys,
+  selectApiKeysLoading,
+  selectApiKeysError,
+  clearError,
+  ApiKey,
+} from "@/store/slices/apiKeySlice";
+import { toast } from "sonner";
 
 export default function ApiKeysPage() {
+  const dispatch = useAppDispatch();
+  const apiKeys = useAppSelector(selectApiKeys);
+  const loading = useAppSelector(selectApiKeysLoading);
+  const error = useAppSelector(selectApiKeysError);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [editingApiKey, setEditingApiKey] = useState<ApiKey | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; apiKey: ApiKey | null }>({
+    isOpen: false,
+    apiKey: null
+  });
+
+  // Load API keys on component mount
+  useEffect(() => {
+    dispatch(loadApiKeys());
+  }, [dispatch]);
+
+  // Clear errors after a delay
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        dispatch(clearError());
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, dispatch]);
+
+  const handleAddApiKey = () => {
+    setModalMode('create');
+    setEditingApiKey(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditApiKey = (apiKey: ApiKey) => {
+    setModalMode('edit');
+    setEditingApiKey(apiKey);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteApiKey = (id: string) => {
+    const apiKey = apiKeys.find(key => key.id === id);
+    if (apiKey) {
+      setDeleteDialog({ isOpen: true, apiKey });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (deleteDialog.apiKey) {
+      try {
+        await dispatch(deleteApiKey(deleteDialog.apiKey.id)).unwrap();
+        toast.success("API key deleted successfully");
+      } catch {
+        toast.error("Failed to delete API key");
+      }
+    }
+    setDeleteDialog({ isOpen: false, apiKey: null });
+  };
+
+  const handleSetDefault = async (id: string, service: string) => {
+    try {
+      await dispatch(setDefaultApiKey({ id, service })).unwrap();
+      toast.success("Default API key updated");
+    } catch {
+      toast.error("Failed to update default API key");
+    }
+  };
+
+  const handleModalSubmit = async (apiKeyData: Omit<ApiKey, 'id' | 'createdAt'>) => {
+    try {
+      if (modalMode === 'edit' && editingApiKey) {
+        await dispatch(updateApiKey({ 
+          id: editingApiKey.id, 
+          updates: apiKeyData 
+        })).unwrap();
+        toast.success("API key updated successfully");
+      } else {
+        await dispatch(addApiKey(apiKeyData)).unwrap();
+        toast.success("API key added successfully");
+      }
+    } catch {
+      toast.error(modalMode === 'edit' ? "Failed to update API key" : "Failed to add API key");
+    }
+  };
+
+  const handleTestApiKey = async (apiKey: ApiKey): Promise<boolean> => {
+    // Simulate API key testing
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Simple validation based on key length and format
+        const isValid = apiKey.key.length >= 8;
+        resolve(isValid);
+      }, 1000);
+    });
+  };
+
+  const handleRefresh = () => {
+    dispatch(loadApiKeys());
+    toast.success("API keys refreshed");
+  };
+
   return (
     <DashboardLayout>
       {/* Header */}
@@ -25,7 +153,17 @@ export default function ApiKeysPage() {
             </div>
             <div className="flex items-center space-x-2">
               <Button 
-                disabled
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={loading}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button 
+                onClick={handleAddApiKey}
                 className="flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />
@@ -38,43 +176,62 @@ export default function ApiKeysPage() {
 
       {/* Main Content */}
       <div className="mt-6 space-y-6">
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
-              API Key Management
-            </CardTitle>
-            <CardDescription>
-              This feature will be available when Redux state management is implemented in Phase 8.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm text-muted-foreground space-y-2">
-              <p>Features coming soon:</p>
-              <ul className="list-disc list-inside space-y-1 ml-4">
-                <li>Secure API key storage and encryption</li>
-                <li>API key management (add, edit, delete)</li>
-                <li>Service-specific key organization</li>
-                <li>Key testing and validation</li>
-                <li>Usage tracking and monitoring</li>
-              </ul>
-            </div>
-            
-            <div className="p-4 bg-muted/50 rounded-lg border-l-4 border-amber-500">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-foreground">Development Note</p>
-                  <p className="text-muted-foreground mt-1">
-                    API Key Manager will be fully implemented in Phase 8 with Redux state management. 
-                    Currently, API keys are managed through the Add API modal in other sections.
-                  </p>
-                </div>
+
+        {/* Error Display */}
+        {error && (
+          <Card className="border-destructive">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 text-destructive">
+                <Info className="h-4 w-4" />
+                <span className="font-medium">Error:</span>
+                <span>{error}</span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* API Keys List */}
+        <ApiKeyList
+          apiKeys={apiKeys}
+          loading={loading}
+          onEdit={handleEditApiKey}
+          onDelete={handleDeleteApiKey}
+          onSetDefault={handleSetDefault}
+          onAdd={handleAddApiKey}
+          onTest={handleTestApiKey}
+        />
       </div>
+
+      {/* API Key Modal */}
+      <ApiKeyModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleModalSubmit}
+        apiKey={editingApiKey}
+        mode={modalMode}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog.isOpen} onOpenChange={(open) => !open && setDeleteDialog({ isOpen: false, apiKey: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete API Key</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteDialog.apiKey?.name}&quot;? 
+              This action cannot be undone and may affect widgets using this API key.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

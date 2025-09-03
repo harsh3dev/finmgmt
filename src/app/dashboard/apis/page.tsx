@@ -14,6 +14,7 @@ import {
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { AddApiModal } from "@/components/dashboard/add-api-modal";
 import { ApiEndpointList } from "@/components/dashboard/api-endpoint-list";
+import { ExportButton } from "@/components/dashboard/export-button";
 import { Plus, Database, AlertTriangle, Activity, Tag } from "lucide-react";
 import { 
   type CreateApiEndpointInput
@@ -114,6 +115,12 @@ export default function ApisPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <ExportButton 
+                widgets={widgets}
+                apiEndpoints={apiEndpoints}
+                variant="outline"
+                size="default"
+              />
               <Button 
                 onClick={() => setIsAddApiModalOpen(true)}
                 className="flex items-center gap-2"
@@ -232,12 +239,18 @@ export default function ApisPage() {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
+                <ExportButton 
+                  widgets={widgets}
+                  apiEndpoints={apiEndpoints}
+                  variant="outline"
+                  size="sm"
+                />
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => {
                     // Test all APIs (placeholder)
-                    console.log('Testing all APIs...');
+
                   }}
                 >
                   <Activity className="h-4 w-4 mr-2" />
