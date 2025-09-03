@@ -36,6 +36,8 @@ export function ScatterChartComponent({ data, config, compact = false }: ChartCo
             tick={{ fontSize: compact ? 10 : 12 }}
             tickFormatter={(value) => formatChartNumber(value)}
             hide={compact}
+            domain={[0, 'dataMax']}
+            allowDecimals={false}
           />
           {!compact && (
             <Tooltip 

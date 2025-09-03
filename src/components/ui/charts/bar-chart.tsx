@@ -34,6 +34,8 @@ export function BarChartComponent({ data, config, compact = false }: ChartCompon
             tick={{ fontSize: compact ? 10 : 12 }}
             tickFormatter={(value) => formatChartNumber(value)}
             hide={compact}
+            domain={[0, 'dataMax']}
+            allowDecimals={false}
           />
           {!compact && (
             <Tooltip 

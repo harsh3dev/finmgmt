@@ -47,44 +47,36 @@ export function DataTable({
   // Process data through search, sort, and pagination
   const processedData = useMemo(() => {
     let result = data;
-    
-    // Apply search filter
-    if (searchable && searchState.query) {
-      result = filterData(result, searchState.query);
-    }
-    
-    // Apply sorting
+    if (searchable && searchState.query) result = filterData(result, searchState.query);
     if (sortable && sortState.column && sortState.direction) {
       result = sortData(result, sortState.column, sortState.direction);
     }
-    
-    // Update pagination totals
+
+    // 3. Compute pagination meta first and clamp current page early to avoid empty slices when totalPages shrinks
     const totalItems = result.length;
-    const totalPages = Math.ceil(totalItems / pagination.pageSize);
-    
-    // Apply pagination
-    let paginatedResult = result;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pagination.pageSize));
+    const safeCurrentPage = Math.min(pagination.currentPage, totalPages);
+
+    let displayData = result;
     if (paginated) {
-      const { paginatedData } = paginateData(result, pagination.currentPage, pagination.pageSize);
-      paginatedResult = paginatedData;
+      const { paginatedData } = paginateData(result, safeCurrentPage, pagination.pageSize);
+      displayData = paginatedData;
     }
-    
-    // Update pagination state if needed
-    if (totalItems !== pagination.totalItems || totalPages !== pagination.totalPages) {
+
+    if (
+      safeCurrentPage !== pagination.currentPage ||
+      totalItems !== pagination.totalItems ||
+      totalPages !== pagination.totalPages
+    ) {
       setPagination(prev => ({
         ...prev,
+        currentPage: safeCurrentPage,
         totalItems,
-        totalPages,
-        currentPage: Math.min(prev.currentPage, totalPages || 1)
+        totalPages
       }));
     }
-    
-    return {
-      displayData: paginatedResult,
-      filteredData: result,
-      totalItems,
-      totalPages
-    };
+
+    return { displayData, filteredData: result, totalItems, totalPages };
   }, [data, searchState.query, sortState, pagination.currentPage, pagination.pageSize, pagination.totalItems, pagination.totalPages, searchable, sortable, paginated]);
   
   // Event handlers
