@@ -104,8 +104,8 @@ export const ROUTES = {
   APIS: '/dashboard/apis',
   IMPORTED: '/dashboard/imported',
   API_KEYS: '/dashboard/api-keys',
-  TEMPLATES: '/dashboard/templates'
-  , LIVE: '/dashboard/live'
+  TEMPLATES: '/dashboard/templates',
+  LIVE: '/dashboard/live'
 } as const
 
 // Navigation icons mapping for dynamic rendering

@@ -52,13 +52,12 @@ export function DataTable({
       result = sortData(result, sortState.column, sortState.direction);
     }
 
-    // 3. Compute pagination meta first and clamp current page early to avoid empty slices when totalPages shrinks
     const totalItems = result.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / pagination.pageSize));
     const safeCurrentPage = Math.min(pagination.currentPage, totalPages);
 
     let displayData = result;
-    if (paginated) {
+    if (paginated && totalItems > 0) {
       const { paginatedData } = paginateData(result, safeCurrentPage, pagination.pageSize);
       displayData = paginatedData;
     }
@@ -79,7 +78,6 @@ export function DataTable({
     return { displayData, filteredData: result, totalItems, totalPages };
   }, [data, searchState.query, sortState, pagination.currentPage, pagination.pageSize, pagination.totalItems, pagination.totalPages, searchable, sortable, paginated]);
   
-  // Event handlers
   const handleSearch = (query: string) => {
     setSearchState(prev => ({ ...prev, query }));
     setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page
